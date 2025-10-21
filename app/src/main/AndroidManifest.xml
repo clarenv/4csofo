@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Internet permission (required for network requests) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme._4csofo">
+
+        <!-- LoginActivity is now the launcher -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Other activities -->
+        <activity android:name=".RegisterActivity" android:exported="false" />
+        <activity android:name=".ForgotPasswordActivity" android:exported="false" />
+        <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".AdminDashboardActivity" android:exported="false" />
+        <activity android:name=".CartActivity" android:exported="false" />
+        <activity android:name=".CheckoutActivity" android:exported="false" />
+        <activity android:name=".OrdersActivity" android:exported="false" />
+
+        <!-- Activities for AdminDashboard buttons -->
+        <activity android:name=".ManageOrdersActivity" android:exported="false" />
+        <activity android:name=".UsersActivity" android:exported="false" />
+        <activity android:name=".CategoriesActivity" android:exported="false" />
+        <activity android:name=".MenuItemsActivity" android:exported="false" />
+
+    </application>
+</manifest>

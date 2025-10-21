@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card"
+    android:padding="16dp"
+    android:layout_marginBottom="12dp"
+    android:elevation="4dp">
+
+    <!-- Customer Name -->
+    <TextView
+        android:id="@+id/txtCustomer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Customer: John Doe"
+        android:textSize="16sp"
+        android:textColor="#222"
+        android:textStyle="bold" />
+
+    <!-- Items -->
+    <TextView
+        android:id="@+id/txtItems"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Items: Burger, Fries"
+        android:textSize="16sp"
+        android:textColor="#222"
+        android:layout_marginTop="4dp" />
+
+    <!-- Total -->
+    <TextView
+        android:id="@+id/txtTotal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="₱155.00"
+        android:textColor="#000"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginTop="4dp" />
+
+    <!-- Payment Method -->
+    <TextView
+        android:id="@+id/txtPayment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Payment: GCash"
+        android:textColor="#555"
+        android:textSize="14sp"
+        android:layout_marginTop="4dp" />
+
+    <!-- Status -->
+    <TextView
+        android:id="@+id/txtStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status: Pending"
+        android:textColor="#008577"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp" />
+
+    <!-- Transaction Number -->
+    <TextView
+        android:id="@+id/txtTransaction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Transaction: TX123"
+        android:textColor="#555"
+        android:textSize="14sp"
+        android:layout_marginTop="4dp" />
+
+    <!-- QR Image -->
+    <ImageView
+        android:id="@+id/qrImage"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@drawable/qr_gcash"
+        android:visibility="gone"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp" />
+
+</LinearLayout>

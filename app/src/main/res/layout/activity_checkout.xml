@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvCheckoutTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Checkout"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <LinearLayout
+            android:id="@+id/cartContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#ccc"
+            android:layout_marginVertical="12dp"/>
+
+        <!-- Price details -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:text="Subtotal:"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+            <TextView
+                android:id="@+id/txtSubtotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱0.00"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:text="VAT (20%):"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+            <TextView
+                android:id="@+id/txtVat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱0.00"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:text="Delivery Fee:"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+            <TextView
+                android:id="@+id/txtDelivery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱30.00"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:text="Total:"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/txtTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱0.00"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+        </LinearLayout>
+
+        <!-- Payment options -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select Payment Method:"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/paymentGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/rbCash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cash on Delivery" />
+
+            <RadioButton
+                android:id="@+id/rbGCash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GCash" />
+
+            <RadioButton
+                android:id="@+id/rbCreditCard"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Credit Card" />
+        </RadioGroup>
+
+        <Button
+            android:id="@+id/btnConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Confirm Order"
+            android:layout_marginTop="24dp"/>
+
+    </LinearLayout>
+
+</ScrollView>

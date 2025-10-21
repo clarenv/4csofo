@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    card_view:cardCornerRadius="12dp"
+    card_view:cardElevation="6dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/ivFoodImage"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_placeholder" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:id="@+id/tvFoodName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Food Name"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:textColor="#000000" />
+
+            <TextView
+                android:id="@+id/tvFoodDesc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Delicious meal description here..."
+                android:textSize="14sp"
+                android:textColor="#555555"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btnAddCart"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Add to Cart"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

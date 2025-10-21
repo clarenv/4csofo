@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">4CSOFO</string>
+
+    <!-- Order Status Array -->
+    <string-array name="order_status_array">
+        <item>Pending</item>
+        <item>Preparing</item>
+        <item>Delivering</item>
+        <item>Delivered</item>
+    </string-array>
+</resources>

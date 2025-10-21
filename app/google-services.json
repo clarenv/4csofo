@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "637403522065",
+    "project_id": "csofo-d3609",
+    "storage_bucket": "csofo-d3609.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637403522065:android:370b4bccd9bfe891357db0",
+        "android_client_info": {
+          "package_name": "com.example.a4csofo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOmPj0BgjFVB9R1AITy_Fh-Gs_NVT9wxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

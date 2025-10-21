@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/itemManageOrderLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@android:color/white"
+    android:layout_marginBottom="8dp"
+    android:elevation="2dp">
+
+    <!-- Order ID -->
+    <TextView
+        android:id="@+id/tvOrderId"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ORD-00001"
+        android:textStyle="bold"
+        android:textSize="16sp"/>
+
+    <!-- Customer Name / Items -->
+    <TextView
+        android:id="@+id/tvCustomer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Customer Name"
+        android:textSize="14sp"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Total Price -->
+    <TextView
+        android:id="@+id/tvTotalPrice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="₱0.00"
+        android:textSize="14sp"
+        android:layout_marginTop="2dp"/>
+
+    <!-- Payment Method -->
+    <TextView
+        android:id="@+id/tvPayment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Payment Method"
+        android:textSize="14sp"
+        android:layout_marginTop="2dp"/>
+
+    <!-- Current Status -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pending"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Spinner for status selection -->
+    <Spinner
+        android:id="@+id/spinnerStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:entries="@array/order_status_array"/>
+
+    <!-- Update Button -->
+    <Button
+        android:id="@+id/btnUpdateStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Update"
+        android:layout_marginTop="8dp"
+        android:layout_gravity="end"/>
+
+</LinearLayout>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F9F9"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Header -->
+    <TextView
+        android:id="@+id/txtHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="My Orders"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="@drawable/bg_header"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Progress Indicator -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Empty Layout -->
+    <LinearLayout
+        android:id="@+id/emptyLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_empty_box"
+            android:contentDescription="Empty icon" />
+
+        <TextView
+            android:id="@+id/txtEmptyMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No orders found."
+            android:textColor="#777777"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+    <!-- RecyclerView for orders -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerOrders"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="vertical"
+        android:visibility="visible" />
+
+</LinearLayout>
