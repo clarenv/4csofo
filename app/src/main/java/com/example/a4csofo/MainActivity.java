@@ -2,7 +2,6 @@ package com.example.a4csofo;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -13,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -25,8 +25,9 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvWelcome;
-    private Button btnCart, btnOrders, btnProfile, btnLogout;
+    private ImageView ivCartIcon;
     private RecyclerView recyclerViewFood;
+    private BottomNavigationView bottomNavigation;
     private FirebaseAuth auth;
     private List<MenuItemsActivity.FoodItem> foodList = new ArrayList<>();
     private FoodAdapter foodAdapter;
@@ -38,11 +39,9 @@ public class MainActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         tvWelcome = findViewById(R.id.tvWelcome);
+        ivCartIcon = findViewById(R.id.ivCartIcon);
         recyclerViewFood = findViewById(R.id.recyclerViewFood);
-        btnCart = findViewById(R.id.btnCart);
-        btnOrders = findViewById(R.id.btnOrders);
-        btnProfile = findViewById(R.id.btnProfile);
-        btnLogout = findViewById(R.id.btnLogout);
+        bottomNavigation = findViewById(R.id.bottomNavigation);
 
         // Set welcome message
         FirebaseUser user = auth.getCurrentUser();
@@ -61,16 +60,27 @@ public class MainActivity extends AppCompatActivity {
 
         loadFoodItemsFromFirebase();
 
-        // Bottom buttons
-        btnCart.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CartActivity.class)));
-        btnOrders.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, OrdersActivity.class)));
-        btnProfile.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ProfileActivity.class)));
-        btnLogout.setOnClickListener(v -> {
-            auth.signOut();
-            Toast.makeText(this, "Logged out successfully!", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(MainActivity.this, LoginActivity.class));
-            finish();
+        // Bottom navigation setup
+        bottomNavigation.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_home) {
+                // Already on home
+                return true;
+            } else if (itemId == R.id.nav_cart) {
+                startActivity(new Intent(MainActivity.this, CartActivity.class));
+                return true;
+            } else if (itemId == R.id.nav_orders) {
+                startActivity(new Intent(MainActivity.this, OrdersActivity.class));
+                return true;
+            } else if (itemId == R.id.nav_profile) {
+                startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+                return true;
+            }
+            return false;
         });
+
+        // Cart icon click
+        ivCartIcon.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CartActivity.class)));
     }
 
     private void loadFoodItemsFromFirebase() {
@@ -107,8 +117,12 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
             MenuItemsActivity.FoodItem food = foods.get(position);
-            holder.tvName.setText(food.name + " - ₱" + food.price);
-            holder.tvDesc.setText(food.description + " (" + food.prepTime + " mins, " + food.category + ")");
+            holder.tvName.setText(food.name);
+            holder.tvPrice.setText("₱" + String.format("%.2f", food.price));
+            holder.tvDesc.setText(food.description);
+            holder.tvCategory.setText(food.category);
+            holder.tvPrepTime.setText(food.prepTime + " mins");
+            
             if (food.imageUrl != null && !food.imageUrl.isEmpty()) {
                 Glide.with(MainActivity.this)
                         .load(food.imageUrl)
@@ -151,14 +165,17 @@ public class MainActivity extends AppCompatActivity {
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
             ImageView ivFoodImage;
-            TextView tvName, tvDesc;
+            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime;
             Button btnAddCart;
 
             public FoodViewHolder(@NonNull android.view.View itemView) {
                 super(itemView);
                 ivFoodImage = itemView.findViewById(R.id.ivFoodImage);
                 tvName = itemView.findViewById(R.id.tvFoodName);
+                tvPrice = itemView.findViewById(R.id.tvFoodPrice);
                 tvDesc = itemView.findViewById(R.id.tvFoodDesc);
+                tvCategory = itemView.findViewById(R.id.tvFoodCategory);
+                tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
                 btnAddCart = itemView.findViewById(R.id.btnAddCart);
             }
         }
