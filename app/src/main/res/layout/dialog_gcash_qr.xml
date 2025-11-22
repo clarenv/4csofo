@@ -35,6 +35,18 @@
             android:contentDescription="GCash QR Code"
             android:layout_marginBottom="24dp" />
 
+        <!-- New Upload Button -->
+        <Button
+            android:id="@+id/btnUpload"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Upload Proof of Payment"
+            android:textSize="18sp"
+            android:backgroundTint="#4CAF50"
+            android:textColor="#FFFFFF"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
         <Button
             android:id="@+id/btnClose"
             android:layout_width="match_parent"

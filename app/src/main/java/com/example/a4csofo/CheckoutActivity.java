@@ -1,8 +1,14 @@
 package com.example.a4csofo;
 
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.*;
@@ -11,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +35,14 @@ public class CheckoutActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private DatabaseReference cartRef;
 
-    private String deliveryLocation = ""; // ✅ store address here
+    private String deliveryLocation = ""; // for delivery orders
+    private static final String SHOP_LOCATION = "Bubukal, Sta. Cruz, Laguna"; // fixed shop location
+
+    private int nextPickUpNumber = 1;
+
+    // GCash upload
+    private static final int PICK_IMAGE_REQUEST = 101;
+    private String gcashProofBase64 = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,17 +63,34 @@ public class CheckoutActivity extends AppCompatActivity {
 
         btnConfirm.setOnClickListener(v -> confirmOrder());
 
-        // ✅ Show GCash QR when selected or show location input for COD
+        prefetchPickUpNumber();
+
         paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
             RadioButton selected = findViewById(checkedId);
             if (selected != null) {
                 String paymentText = selected.getText().toString();
+
                 if (paymentText.equalsIgnoreCase("GCash")) {
                     showGcashPopup();
                 } else if (paymentText.equalsIgnoreCase("Cash on Delivery")) {
                     showDeliveryLocationDialog();
+                } else if (paymentText.equalsIgnoreCase("Pick Up")) {
+                    showPickUpNumberQueueFast();
                 }
             }
+        });
+    }
+
+    private void prefetchPickUpNumber() {
+        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
+        ordersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                nextPickUpNumber = (int) snapshot.getChildrenCount() + 1;
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
 
@@ -144,6 +176,8 @@ public class CheckoutActivity extends AppCompatActivity {
             itemsList.add(item.getName() + " x" + item.getQuantity());
         }
 
+        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
+
         OrderModel order = new OrderModel(
                 currentUser.getUid(),
                 "Customer Name",
@@ -151,38 +185,46 @@ public class CheckoutActivity extends AppCompatActivity {
                 total,
                 paymentMethod,
                 "Pending",
-                deliveryLocation // ✅ Include location if delivery
+                deliveryLocation
         );
 
-        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
+        // Save GCash proof if selected
+        if(paymentMethod.equalsIgnoreCase("GCash")) {
+            order.setGcashProof(gcashProofBase64);
+        }
 
         ordersRef.push().setValue(order)
                 .addOnSuccessListener(aVoid -> {
                     cartRef.removeValue(); // clear cart
-                    showReceiptPopup(itemsList, total, paymentMethod);
+
+                    if (paymentMethod.equalsIgnoreCase("Pick Up")) {
+                        showPickUpInfo(nextPickUpNumber);
+                        nextPickUpNumber++;
+                    } else {
+                        showReceiptPopup(itemsList, total, paymentMethod);
+                    }
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(CheckoutActivity.this, "Failed to place order: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
     }
 
-    // ✅ Dialog to input delivery address
     private void showDeliveryLocationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Enter Delivery Location");
 
         final EditText input = new EditText(this);
-        input.setHint("e.g. 123 Mabini St., Manila");
+        input.setHint("e.g. Bubukal, Sta. Cruz, Laguna");
         input.setPadding(40, 30, 40, 30);
         builder.setView(input);
 
         builder.setPositiveButton("Save", (dialog, which) -> {
             String location = input.getText().toString().trim();
-            if (location.isEmpty()) {
-                Toast.makeText(this, "Location cannot be empty", Toast.LENGTH_SHORT).show();
-            } else {
+            if (!location.isEmpty()) {
                 deliveryLocation = location;
                 Toast.makeText(this, "Delivery location saved!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Location cannot be empty", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -190,7 +232,7 @@ public class CheckoutActivity extends AppCompatActivity {
         builder.show();
     }
 
-    // ✅ GCash QR Popup
+    // GCash popup with Upload button
     private void showGcashPopup() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = getLayoutInflater();
@@ -199,24 +241,82 @@ public class CheckoutActivity extends AppCompatActivity {
         ImageView qrImage = dialogView.findViewById(R.id.qrImage);
         TextView txtInfo = dialogView.findViewById(R.id.txtInfo);
         Button btnClose = dialogView.findViewById(R.id.btnClose);
+        Button btnUpload = dialogView.findViewById(R.id.btnUpload); // NEW: upload button
 
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
 
+        btnUpload.setOnClickListener(v -> openImagePicker());
         btnClose.setOnClickListener(v -> dialog.dismiss());
         dialog.show();
     }
 
-    // ✅ RECEIPT POPUP
+    private void openImagePicker() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Select Proof of Payment"), PICK_IMAGE_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No app found to pick image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri imageUri = data.getData();
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                gcashProofBase64 = encodeImageToBase64(bitmap);
+                Toast.makeText(this, "Proof of payment uploaded successfully", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private String encodeImageToBase64(Bitmap bitmap) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+        byte[] imageBytes = baos.toByteArray();
+        return Base64.encodeToString(imageBytes, Base64.DEFAULT);
+    }
+
+    private void showPickUpNumberQueueFast() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Pick Up Order Number");
+        builder.setMessage("Your order number in queue is: #" + nextPickUpNumber);
+        builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private void showPickUpInfo(int orderNumber) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Pick Up Information");
+        builder.setMessage("Your order is ready for pick up.\n\nOrder Number in queue: #" + orderNumber +
+                "\nPick up at: A4CSOFO Food Services\n" + SHOP_LOCATION);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            Intent intent = new Intent(CheckoutActivity.this, OrdersActivity.class);
+            startActivity(intent);
+            finish();
+        });
+        builder.show();
+    }
+
     private void showReceiptPopup(List<String> items, double total, String paymentMethod) {
         double vat = total * 0.12 / 1.12;
-        double subtotal = total - vat - 30; // assuming ₱30 delivery fee
+        double subtotal = total - vat - 30;
 
         StringBuilder receiptBuilder = new StringBuilder();
 
         receiptBuilder.append("🧾  OFFICIAL RECEIPT\n\n");
         receiptBuilder.append("A4CSOFO FOOD SERVICES\n");
-        receiptBuilder.append("123 Mabini St., Manila City\n");
+        receiptBuilder.append(SHOP_LOCATION + "\n");
         receiptBuilder.append("VAT Reg TIN: 123-456-789-000\n");
         receiptBuilder.append("Tel No: (02) 123-4567\n");
         receiptBuilder.append("--------------------------------------------\n");
@@ -253,7 +353,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 .show();
     }
 
-    // ✅ CART ITEM MODEL
     public static class CartItem {
         private String name;
         private int quantity;
