@@ -43,8 +43,10 @@ public class OrderModel {
     public String getTransaction_number() { return transaction_number; }
     public String getGcashProof() { return gcashProof; }  // <-- new getter
 
-    // Legacy getter para sa Adapter compatibility
-    public String getCustomer_name() { return getCustomerName(); }
+    // Adapter-friendly getters
+    public String getCustomer_name() { return getCustomerName(); } // Legacy
+    public String getTotal() { return getFormattedTotal(); }
+    public String getPaymentMethod() { return payment_method != null ? payment_method : "N/A"; }
 
     // Setters
     public void setOrderKey(String orderKey) { this.orderKey = orderKey; }
@@ -56,6 +58,11 @@ public class OrderModel {
     public void setStatus(String status) { this.status = status; }
     public void setTransaction_number(String transaction_number) { this.transaction_number = transaction_number; }
     public void setGcashProof(String gcashProof) { this.gcashProof = gcashProof; } // <-- new setter
+
+    // Adapter-friendly setters (new)
+    public void setCustomer_name(String customerName) { this.customer_name = customerName; }
+    public void setTotal(String total) { /* no-op, keep for Adapter compatibility */ }
+    public void setPaymentMethod(String paymentMethod) { this.payment_method = paymentMethod; }
 
     // Helper method: return items as comma-separated string
     public String getItemsAsString() {
@@ -71,15 +78,6 @@ public class OrderModel {
     // Helper method: formatted payment text
     public String getPaymentText() {
         return "Payment: " + (payment_method != null ? payment_method : "N/A");
-    }
-
-    // Adapter-friendly methods
-    public String getTotal() {
-        return getFormattedTotal();
-    }
-
-    public String getPaymentMethod() {
-        return payment_method != null ? payment_method : "N/A";
     }
 
     // Update order status in Firebase

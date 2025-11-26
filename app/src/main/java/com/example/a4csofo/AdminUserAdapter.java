@@ -1,12 +1,13 @@
 package com.example.a4csofo;
 
+import android.app.AlertDialog;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Filter;
-import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -14,20 +15,26 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.UserViewHolder> implements Filterable {
+public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.UserViewHolder> {
 
-    private List<AdminUserModel> userList;
-    private List<AdminUserModel> userListFull;
-    private OnUserDeleteListener deleteListener;
-
-    public interface OnUserDeleteListener {
-        void onDelete(String userUid);
+    public interface OnUserActionListener {
+        void onViewProfile(AdminUserModel user);
     }
 
-    public AdminUserAdapter(List<AdminUserModel> userList, OnUserDeleteListener deleteListener) {
-        this.userList = userList;
-        this.userListFull = new ArrayList<>(userList);
+    public interface DeleteListener {
+        void onDelete(String uid);
+    }
+
+    private List<AdminUserModel> userList;
+    private final DeleteListener deleteListener;
+    private final OnUserActionListener actionListener;
+
+    public AdminUserAdapter(List<AdminUserModel> userList,
+                            DeleteListener deleteListener,
+                            OnUserActionListener actionListener) {
+        this.userList = userList != null ? userList : new ArrayList<>();
         this.deleteListener = deleteListener;
+        this.actionListener = actionListener;
     }
 
     @NonNull
@@ -41,62 +48,59 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
     @Override
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         AdminUserModel user = userList.get(position);
-        holder.tvName.setText(user.getName());
-        holder.tvEmail.setText(user.getEmail());
-        holder.tvRole.setText(user.getRole());
 
+        // -------------------- Null-Safe Text --------------------
+        holder.txtName.setText(user.getName() != null ? user.getName() : "Unknown");
+        holder.txtEmail.setText(user.getEmail() != null ? user.getEmail() : "Unknown");
+        holder.txtRole.setText(user.getRole() != null ? user.getRole() : "Unknown");
+
+        // -------------------- Active / Online Status --------------------
+        boolean isActive = user.isActive();
+        holder.tvOnlineStatus.setText(isActive ? "Online" : "Offline");
+        holder.tvOnlineStatus.setTextColor(isActive ? Color.parseColor("#4CAF50")
+                : Color.parseColor("#F44336"));
+
+        String uid = user.getUid();
+
+        // -------------------- Buttons --------------------
         holder.btnDelete.setOnClickListener(v -> {
-            if (deleteListener != null) {
-                deleteListener.onDelete(user.getUid());
+            if (deleteListener != null && uid != null && !uid.isEmpty()) {
+                deleteListener.onDelete(uid);
+            } else {
+                Toast.makeText(holder.itemView.getContext(),
+                        "Cannot delete user: UID is missing",
+                        Toast.LENGTH_SHORT).show();
             }
+        });
+
+        holder.btnViewProfile.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onViewProfile(user);
         });
     }
 
     @Override
-    public int getItemCount() { return userList.size(); }
+    public int getItemCount() {
+        return userList != null ? userList.size() : 0;
+    }
 
-    @Override
-    public Filter getFilter() { return userFilter; }
-
-    private final Filter userFilter = new Filter() {
-        @Override
-        protected FilterResults performFiltering(CharSequence constraint) {
-            List<AdminUserModel> filteredList = new ArrayList<>();
-            if (constraint == null || constraint.length() == 0) {
-                filteredList.addAll(userListFull);
-            } else {
-                String filterPattern = constraint.toString().toLowerCase().trim();
-                for (AdminUserModel user : userListFull) {
-                    if (user.getName().toLowerCase().contains(filterPattern) ||
-                            user.getEmail().toLowerCase().contains(filterPattern) ||
-                            user.getRole().toLowerCase().contains(filterPattern)) {
-                        filteredList.add(user);
-                    }
-                }
-            }
-            FilterResults results = new FilterResults();
-            results.values = filteredList;
-            return results;
-        }
-
-        @Override
-        protected void publishResults(CharSequence constraint, FilterResults results) {
-            userList.clear();
-            userList.addAll((List<AdminUserModel>) results.values);
-            notifyDataSetChanged();
-        }
-    };
+    // -------------------- Update List (for Search/Filter) --------------------
+    public void updateList(List<AdminUserModel> newList) {
+        this.userList = newList != null ? newList : new ArrayList<>();
+        notifyDataSetChanged();
+    }
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvEmail, tvRole;
-        ImageView btnDelete;
+        TextView txtName, txtEmail, txtRole, tvOnlineStatus;
+        ImageView btnDelete, btnViewProfile;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvName = itemView.findViewById(R.id.txtName);
-            tvEmail = itemView.findViewById(R.id.txtEmail);
-            tvRole = itemView.findViewById(R.id.txtRole);
+            txtName = itemView.findViewById(R.id.txtName);
+            txtEmail = itemView.findViewById(R.id.txtEmail);
+            txtRole = itemView.findViewById(R.id.txtRole);
+            tvOnlineStatus = itemView.findViewById(R.id.tvOnlineStatus);
             btnDelete = itemView.findViewById(R.id.btnDelete);
+            btnViewProfile = itemView.findViewById(R.id.btnViewProfile);
         }
     }
 }

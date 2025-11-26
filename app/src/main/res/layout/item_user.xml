@@ -1,43 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_margin="6dp"
-    android:elevation="3dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:elevation="4dp"
+    app:cardCornerRadius="8dp">
 
-    <LinearLayout
-        android:padding="12dp"
-        android:orientation="vertical"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:padding="12dp">
 
+        <!-- Name -->
         <TextView
             android:id="@+id/txtName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:textStyle="bold"
             android:textSize="18sp"
             android:textColor="#000"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
 
+        <!-- Email -->
         <TextView
             android:id="@+id/txtEmail"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="#555"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            app:layout_constraintStart_toStartOf="@id/txtName"
+            app:layout_constraintTop_toBottomOf="@id/txtName"
+            app:layout_constraintEnd_toEndOf="@id/txtName"/>
 
+        <!-- Role -->
         <TextView
             android:id="@+id/txtRole"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="#2196F3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            app:layout_constraintStart_toStartOf="@id/txtEmail"
+            app:layout_constraintTop_toBottomOf="@id/txtEmail"/>
 
-        <ImageView
-            android:id="@+id/btnDelete"
-            android:src="@android:drawable/ic_menu_delete"
-            android:layout_gravity="end"
-            android:layout_width="32dp"
-            android:layout_height="32dp"/>
-    </LinearLayout>
+        <!-- Online/Offline Status -->
+        <TextView
+            android:id="@+id/tvOnlineStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Offline"
+            android:textSize="14sp"
+            android:textColor="#F44336"
+            app:layout_constraintStart_toEndOf="@id/txtRole"
+            app:layout_constraintBaseline_toBaselineOf="@id/txtRole"
+            android:layout_marginStart="12dp"/>
+
+        <!-- Horizontal actions: Delete & View Profile -->
+        <LinearLayout
+            android:id="@+id/actionContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/txtRole"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageView
+                android:id="@+id/btnDelete"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="Delete user"
+                android:src="@android:drawable/ic_menu_delete"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageView
+                android:id="@+id/btnViewProfile"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="View profile"
+                android:src="@android:drawable/ic_menu_info_details"/>
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>
