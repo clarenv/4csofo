@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light">
+    android:background="@color/background_light"
+    android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -24,14 +25,15 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- App Logo/Icon -->
+            <!-- App Logo/Icon (bilog) -->
             <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@drawable/ic_launcher_foreground"
-                android:background="@drawable/bg_gradient"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@drawable/app_logo"
+                android:background="@drawable/bg_circle"
                 android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="17dp"
+                android:scaleType="centerCrop"/>
 
             <!-- Welcome Text -->
             <TextView
@@ -69,7 +71,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="24dp"
+                android:paddingBottom="32dp">
 
                 <!-- Email Input -->
                 <com.google.android.material.textfield.TextInputLayout
@@ -79,7 +84,8 @@
                     android:hint="Email Address"
                     app:startIconDrawable="@android:drawable/ic_dialog_email"
                     app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/primary">
+                    app:hintTextColor="@color/primary"
+                    app:boxBackgroundMode="outline">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/email_input"
@@ -98,7 +104,8 @@
                     android:hint="Password"
                     app:startIconDrawable="@android:drawable/ic_lock_idle_lock"
                     app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/primary">
+                    app:hintTextColor="@color/primary"
+                    app:boxBackgroundMode="outline">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/password_input"
@@ -118,7 +125,7 @@
                     android:textSize="18sp"
                     android:textStyle="bold"
                     style="@style/ButtonPrimary"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_marginTop="16dp" />
 
                 <!-- Forgot Password -->
                 <TextView

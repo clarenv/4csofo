@@ -2,6 +2,7 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
@@ -11,7 +12,22 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Name Input -->
+        <!-- Logo -->
+        <ImageView
+            android:id="@+id/logoImage"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_circle"
+            android:contentDescription="Logo"
+            android:src="@drawable/app_logo"
+            android:scaleType="centerCrop"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <!-- Full Name -->
         <EditText
             android:id="@+id/etName"
             android:layout_width="0dp"
@@ -19,15 +35,14 @@
             android:hint="Full Name"
             android:inputType="textPersonName"
             android:padding="12dp"
-            android:backgroundTint="@color/primary"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/logoImage"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="32dp" />
+            android:layout_marginTop="24dp" />
 
-        <!-- Email Input -->
+        <!-- Email -->
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="0dp"
@@ -35,7 +50,6 @@
             android:hint="Email"
             android:inputType="textEmailAddress"
             android:padding="12dp"
-            android:backgroundTint="@color/primary"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             app:layout_constraintTop_toBottomOf="@id/etName"
@@ -43,7 +57,38 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp" />
 
-        <!-- Password Input -->
+        <!-- Phone Number -->
+        <EditText
+            android:id="@+id/etPhone"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:hint="Phone Number"
+            android:inputType="phone"
+            android:padding="12dp"
+            android:maxLength="11"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            app:layout_constraintTop_toBottomOf="@id/etEmail"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp" />
+
+        <!-- Address -->
+        <EditText
+            android:id="@+id/etAddress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:hint="Complete Address"
+            android:padding="12dp"
+            android:inputType="textPostalAddress"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            app:layout_constraintTop_toBottomOf="@id/etPhone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp" />
+
+        <!-- Password -->
         <EditText
             android:id="@+id/etPassword"
             android:layout_width="0dp"
@@ -51,10 +96,9 @@
             android:hint="Password"
             android:inputType="textPassword"
             android:padding="12dp"
-            android:backgroundTint="@color/primary"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            app:layout_constraintTop_toBottomOf="@id/etEmail"
+            app:layout_constraintTop_toBottomOf="@id/etAddress"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp" />
@@ -67,7 +111,6 @@
             android:hint="Confirm Password"
             android:inputType="textPassword"
             android:padding="12dp"
-            android:backgroundTint="@color/primary"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             app:layout_constraintTop_toBottomOf="@id/etPassword"
@@ -82,8 +125,8 @@
             android:layout_height="wrap_content"
             android:text="Create Account"
             android:textAllCaps="false"
-            android:backgroundTint="@color/primary"
             android:textColor="@color/text_white"
+            android:backgroundTint="@color/primary"
             app:layout_constraintTop_toBottomOf="@id/etConfirmPassword"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -103,4 +146,5 @@
             app:layout_constraintEnd_toEndOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
 </ScrollView>

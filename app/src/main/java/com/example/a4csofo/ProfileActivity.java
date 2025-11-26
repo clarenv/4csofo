@@ -19,7 +19,7 @@ import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
-    private EditText edtName, edtEmail, edtAddress;
+    private EditText edtName, edtEmail, edtAddress, edtPhone;
     private Button btnSave, btnEdit, btnLogout;
     private boolean isEditing = false;
 
@@ -28,7 +28,6 @@ public class ProfileActivity extends AppCompatActivity {
     private DatabaseReference usersRef;
 
     private BottomNavigationView bottomNavigation;
-    private ImageView ivCartIcon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +37,7 @@ public class ProfileActivity extends AppCompatActivity {
         edtName = findViewById(R.id.edtName);
         edtEmail = findViewById(R.id.edtEmail);
         edtAddress = findViewById(R.id.edtAddress);
+        edtPhone = findViewById(R.id.edtPhone);
 
         btnSave = findViewById(R.id.btnSave);
         btnEdit = findViewById(R.id.btnEdit);
@@ -63,13 +63,7 @@ public class ProfileActivity extends AppCompatActivity {
             isEditing = !isEditing;
             setEditingEnabled(isEditing);
 
-            if (isEditing) {
-                btnEdit.setText("Cancel");
-                Toast.makeText(this, "You can now edit your profile", Toast.LENGTH_SHORT).show();
-            } else {
-                btnEdit.setText("Edit");
-                loadUserData();
-            }
+            btnEdit.setText(isEditing ? "Cancel" : "Edit");
         });
 
         btnSave.setOnClickListener(v -> {
@@ -89,15 +83,11 @@ public class ProfileActivity extends AppCompatActivity {
         setupNavigation();
     }
 
-    // -------------------------
-    // BOTTOM NAVIGATION
-    // -------------------------
     private void setupNavigation() {
         bottomNavigation.setSelectedItemId(R.id.nav_profile);
 
         bottomNavigation.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-
             if (id == R.id.nav_home) {
                 startActivity(new Intent(ProfileActivity.this, MainActivity.class));
                 return true;
@@ -115,7 +105,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     // -------------------------
-    // LOAD USER DATA (RTDB)
+    // LOAD USER DATA
     // -------------------------
     private void loadUserData() {
         String uid = currentUser.getUid();
@@ -127,8 +117,7 @@ public class ProfileActivity extends AppCompatActivity {
                     edtName.setText(snapshot.child("name").getValue(String.class));
                     edtEmail.setText(snapshot.child("email").getValue(String.class));
                     edtAddress.setText(snapshot.child("address").getValue(String.class));
-                } else {
-                    Toast.makeText(ProfileActivity.this, "No user data found", Toast.LENGTH_SHORT).show();
+                    edtPhone.setText(snapshot.child("phone").getValue(String.class));
                 }
             }
 
@@ -140,7 +129,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     // -------------------------
-    // SAVE USER DATA (RTDB)
+    // SAVE USER DATA
     // -------------------------
     private void saveUserData() {
         String uid = currentUser.getUid();
@@ -149,6 +138,7 @@ public class ProfileActivity extends AppCompatActivity {
         data.put("name", edtName.getText().toString().trim());
         data.put("email", edtEmail.getText().toString().trim());
         data.put("address", edtAddress.getText().toString().trim());
+        data.put("phone", edtPhone.getText().toString().trim());
 
         usersRef.child(uid).updateChildren(data)
                 .addOnSuccessListener(aVoid ->
@@ -163,6 +153,7 @@ public class ProfileActivity extends AppCompatActivity {
         edtName.setEnabled(enabled);
         edtEmail.setEnabled(enabled);
         edtAddress.setEnabled(enabled);
+        edtPhone.setEnabled(enabled);
         btnSave.setEnabled(enabled);
     }
 }

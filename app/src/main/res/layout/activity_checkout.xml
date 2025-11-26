@@ -3,21 +3,32 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- TITLE -->
         <TextView
             android:id="@+id/tvCheckoutTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Checkout"
-            android:textSize="24sp"
+            android:textSize="26sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="20dp" />
+
+        <!-- CART ITEMS SECTION -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Order Summary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp" />
 
         <LinearLayout
             android:id="@+id/cartContainer"
@@ -25,81 +36,137 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
+        <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#ccc"
-            android:layout_marginVertical="12dp"/>
+            android:background="#CCCCCC"
+            android:layout_marginVertical="16dp" />
 
-        <!-- Price details -->
+        <!-- PRICE DETAILS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Price Breakdown"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="8dp">
 
-            <TextView
-                android:text="Subtotal:"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtSubtotal"
-                android:layout_width="wrap_content"
+            <!-- Subtotal -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:orientation="horizontal"
+                android:weightSum="2">
 
-            <TextView
-                android:text="VAT (20%):"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtVat"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:text="Subtotal:"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content" />
 
-            <TextView
-                android:text="Delivery Fee:"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtDelivery"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱30.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:id="@+id/txtSubtotal"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
-            <TextView
-                android:text="Total:"
-                android:layout_width="wrap_content"
+            <!-- VAT -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-            <TextView
-                android:id="@+id/txtTotal"
-                android:layout_width="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
+                android:weightSum="2">
+
+                <TextView
+                    android:text="VAT (12%):"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/txtVat"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Delivery Fee -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
+                android:weightSum="2">
+
+                <TextView
+                    android:text="Delivery Fee:"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/txtDelivery"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:layout_height="wrap_content"
+                    android:text="₱30.00"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- TOTAL -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="10dp"
+                android:weightSum="2">
+
+                <TextView
+                    android:text="TOTAL:"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/txtTotal"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Payment options -->
+        <!-- PAYMENT METHOD -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Select Payment Method:"
-            android:textSize="16sp"
+            android:text="Select Payment Method"
+            android:textSize="18sp"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="8dp" />
 
-        <!-- ✅ UPDATED RADIOGROUP WITH 3 OPTIONS -->
         <RadioGroup
             android:id="@+id/paymentGroup"
             android:layout_width="match_parent"
@@ -124,13 +191,16 @@
                 android:text="Pick Up" />
         </RadioGroup>
 
+        <!-- CONFIRM BUTTON -->
         <Button
             android:id="@+id/btnConfirm"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Confirm Order"
-            android:layout_marginTop="24dp"/>
+            android:layout_marginTop="30dp"
+            android:padding="14dp"
+            android:enabled="true" /> <!-- you can leave it enabled for other payments -->
+
 
     </LinearLayout>
-
 </ScrollView>
