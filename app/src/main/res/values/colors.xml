@@ -16,8 +16,4 @@
     <color name="text_primary">#3A537D</color>     <!-- Deep Blue (matches “4C's” text) -->
     <color name="text_secondary">#6A7A90</color>   <!-- Blue-gray -->
 
-    <!-- Extra Colors for Logo -->
-    <color name="white">#FFFFFF</color>            <!-- White, para sa bilog na logo background -->
-    <color name="logo_stroke">#D55F39</color>     <!-- Optional: border stroke ng bilog logo -->
-
 </resources>

@@ -20,7 +20,7 @@ import java.util.HashMap;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    EditText name, email, phone, address, password, confirmPassword;
+    EditText name, email, password, confirmPassword;
     Button btnRegister;
     TextView loginLink;
     FirebaseAuth auth;
@@ -36,8 +36,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         name = findViewById(R.id.etName);
         email = findViewById(R.id.etEmail);
-        phone = findViewById(R.id.etPhone);
-        address = findViewById(R.id.etAddress);
         password = findViewById(R.id.etPassword);
         confirmPassword = findViewById(R.id.etConfirmPassword);
         btnRegister = findViewById(R.id.btnRegister);
@@ -45,36 +43,25 @@ public class RegisterActivity extends AppCompatActivity {
 
         btnRegister.setOnClickListener(v -> registerUser());
         loginLink.setOnClickListener(v -> {
-            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+            Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+            startActivity(intent);
         });
     }
 
     private void registerUser() {
         String fullName = name.getText().toString().trim();
         String userEmail = email.getText().toString().trim();
-        String userPhone = phone.getText().toString().trim();
-        String userAddress = address.getText().toString().trim();
         String userPassword = password.getText().toString().trim();
         String confirmPass = confirmPassword.getText().toString().trim();
 
-        // -----------------------
-        // VALIDATIONS
-        // -----------------------
         if (TextUtils.isEmpty(fullName) || TextUtils.isEmpty(userEmail)
-                || TextUtils.isEmpty(userPhone) || TextUtils.isEmpty(userAddress)
                 || TextUtils.isEmpty(userPassword) || TextUtils.isEmpty(confirmPass)) {
-
             Toast.makeText(this, "⚠️ All fields are required.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
             Toast.makeText(this, "❌ Invalid email format.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (!Patterns.PHONE.matcher(userPhone).matches() || userPhone.length() < 10) {
-            Toast.makeText(this, "❌ Invalid phone number.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -88,9 +75,6 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // -----------------------
-        // CREATE USER
-        // -----------------------
         btnRegister.setEnabled(false);
         btnRegister.setText("Registering...");
 
@@ -100,16 +84,13 @@ public class RegisterActivity extends AppCompatActivity {
                     btnRegister.setText("Create Account");
 
                     if (task.isSuccessful()) {
-
                         FirebaseUser user = auth.getCurrentUser();
                         if (user != null) {
-
+                            // ✅ Save user details to Realtime Database
                             HashMap<String, Object> userData = new HashMap<>();
                             userData.put("name", fullName);
                             userData.put("email", userEmail);
-                            userData.put("phone", userPhone);
-                            userData.put("address", userAddress);
-                            userData.put("role", "customer");
+                            userData.put("role", "customer"); // default role
 
                             usersRef.child(user.getUid()).setValue(userData)
                                     .addOnCompleteListener(dbTask -> {
@@ -122,12 +103,11 @@ public class RegisterActivity extends AppCompatActivity {
                                             finish();
                                         } else {
                                             Toast.makeText(RegisterActivity.this,
-                                                    "❌ Failed to save user info.",
+                                                    "❌ Failed to save user info to database.",
                                                     Toast.LENGTH_LONG).show();
                                         }
                                     });
                         }
-
                     } else {
                         Toast.makeText(RegisterActivity.this,
                                 "❌ Registration failed: " + task.getException().getMessage(),
