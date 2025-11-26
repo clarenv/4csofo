@@ -1,64 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/background_light">
+    android:layout_height="match_parent">
 
-    <!-- Main Content -->
-    <LinearLayout
-        android:orientation="vertical"
+    <!-- Container for fragments -->
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        android:layout_marginBottom="80dp"/>
 
-        <!-- Search Box -->
-        <EditText
-            android:id="@+id/editSearch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Search users..."
-            android:padding="10dp"
-            android:background="@drawable/search_box_bg"
-            android:drawableStart="@android:drawable/ic_menu_search"
-            android:drawablePadding="8dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- RecyclerView -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerUsers"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingBottom="80dp"
-            android:background="@color/background_card"/>
-
-        <!-- ProgressBar -->
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Large"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:layout_gravity="center"
-            android:indeterminateTint="@color/primary_dark"/>
-    </LinearLayout>
-
-    <!-- Floating Bottom Navigation for Admin -->
+    <!-- Bottom navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_gravity="bottom"
-        android:layout_margin="16dp"
-        android:background="@drawable/admin_floating_nav_bg"
         app:menu="@menu/admin_bottom_navigation"
         app:itemIconTint="@color/primary"
-        app:itemTextColor="@color/primary"
-        app:elevation="8dp"/>
-
+        app:itemTextColor="@color/primary"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

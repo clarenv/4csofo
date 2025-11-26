@@ -15,12 +15,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 
-public class ManageOrdersAdapter extends RecyclerView.Adapter<ManageOrdersAdapter.OrderViewHolder> {
+public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOrdersAdapter.OrderViewHolder> {
 
     private final Context context;
     private final ArrayList<OrderModel> orderList;
 
-    public ManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList) {
+    public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList) {
         this.context = context;
         this.orderList = orderList;
     }

@@ -1,19 +1,16 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_orders"
-        android:icon="@drawable/ic_admin_orders"
-        android:title="Orders"/>
-
-    <item
         android:id="@+id/nav_users"
         android:icon="@drawable/ic_admin_users"
         android:title="Users"/>
-
+    <item
+        android:id="@+id/nav_orders"
+        android:icon="@drawable/ic_admin_orders"
+        android:title="Orders"/>
     <item
         android:id="@+id/nav_categories"
         android:icon="@drawable/ic_admin_categories"
         android:title="Categories"/>
-
     <item
         android:id="@+id/nav_menu_items"
         android:icon="@drawable/ic_admin_menu_items"

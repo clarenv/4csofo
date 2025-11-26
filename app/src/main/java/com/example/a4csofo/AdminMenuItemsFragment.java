@@ -1,15 +1,19 @@
 package com.example.a4csofo;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
@@ -17,7 +21,9 @@ import com.google.firebase.database.FirebaseDatabase;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 
-public class AdminMenuItemsActivity extends AppCompatActivity {
+import static android.app.Activity.RESULT_OK;
+
+public class AdminMenuItemsFragment extends Fragment {
 
     private static final int PICK_IMAGE_REQUEST = 100;
 
@@ -27,28 +33,29 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
     private ImageView ivFoodPreview;
 
     private DatabaseReference foodsRef;
-
     private String base64Image = null;
 
-    @SuppressLint("MissingInflatedId")
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_admin_menu);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
 
-        etName = findViewById(R.id.etName);
-        etPrice = findViewById(R.id.etPrice);
-        etPrepTime = findViewById(R.id.etPrepTime);
-        etDescription = findViewById(R.id.etDescription);
-        spCategory = findViewById(R.id.spCategory);
-        btnAddFood = findViewById(R.id.btnAddFood);
-        btnPickImage = findViewById(R.id.btnPickImage);
-        ivFoodPreview = findViewById(R.id.ivFoodPreview);
+        View view = inflater.inflate(R.layout.fragment_admin_menu, container, false);
+
+        etName = view.findViewById(R.id.etName);
+        etPrice = view.findViewById(R.id.etPrice);
+        etPrepTime = view.findViewById(R.id.etPrepTime);
+        etDescription = view.findViewById(R.id.etDescription);
+        spCategory = view.findViewById(R.id.spCategory);
+        btnAddFood = view.findViewById(R.id.btnAddFood);
+        btnPickImage = view.findViewById(R.id.btnPickImage);
+        ivFoodPreview = view.findViewById(R.id.ivFoodPreview);
 
         foodsRef = FirebaseDatabase.getInstance().getReference("foods");
 
         // Spinner setup
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
                 android.R.layout.simple_spinner_item,
                 new String[]{"Main Dish", "Drinks", "Dessert", "Snacks"});
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -59,6 +66,8 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
 
         // Add food
         btnAddFood.setOnClickListener(v -> addFoodItem());
+
+        return view;
     }
 
     private void openImagePicker() {
@@ -69,13 +78,13 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
             try {
                 Uri imageUri = data.getData();
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                InputStream inputStream = getActivity().getContentResolver().openInputStream(imageUri);
                 Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                 ivFoodPreview.setImageBitmap(bitmap);
 
@@ -87,7 +96,7 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                Toast.makeText(this, "Failed to select image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Failed to select image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -100,7 +109,7 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
         String category = spCategory.getSelectedItem() != null ? spCategory.getSelectedItem().toString() : "";
 
         if (name.isEmpty() || priceStr.isEmpty() || prepTime.isEmpty()) {
-            Toast.makeText(this, "Fill all fields", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -108,13 +117,13 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
         try {
             price = Double.parseDouble(priceStr);
         } catch (NumberFormatException e) {
-            Toast.makeText(this, "Invalid price", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Invalid price", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String key = foodsRef.push().getKey();
         if (key == null) {
-            Toast.makeText(this, "Database error: could not generate key", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Database error: could not generate key", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -122,10 +131,10 @@ public class AdminMenuItemsActivity extends AppCompatActivity {
 
         foodsRef.child(key).setValue(food)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "Food added successfully!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Food added successfully!", Toast.LENGTH_SHORT).show();
                     clearFields();
                 })
-                .addOnFailureListener(e -> Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> Toast.makeText(getContext(), "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void clearFields() {

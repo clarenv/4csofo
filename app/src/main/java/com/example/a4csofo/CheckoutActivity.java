@@ -160,7 +160,7 @@ public class CheckoutActivity extends AppCompatActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartList.clear();
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                    AdminMenuItemsActivity.FoodItem food = itemSnapshot.getValue(AdminMenuItemsActivity.FoodItem.class);
+                    AdminMenuItemsFragment.FoodItem food = itemSnapshot.getValue(AdminMenuItemsFragment.FoodItem.class);
                     if (food != null) {
                         cartList.add(new CartItem(food.name, 1, food.price));
                     }

@@ -96,7 +96,7 @@ public class CartActivity extends AppCompatActivity {
                 cartItems.clear();
                 cartKeys.clear();
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    AdminMenuItemsActivity.FoodItem food = data.getValue(AdminMenuItemsActivity.FoodItem.class);
+                    AdminMenuItemsFragment.FoodItem food = data.getValue(AdminMenuItemsFragment.FoodItem.class);
                     if (food != null) {
                         cartItems.add(food.name + " - ₱" + food.price);
                         cartKeys.add(data.getKey());

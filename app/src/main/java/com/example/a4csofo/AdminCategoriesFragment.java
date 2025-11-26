@@ -1,5 +1,6 @@
 package com.example.a4csofo;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -11,7 +12,8 @@ import android.view.ViewGroup;
 import android.widget.*;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -20,29 +22,34 @@ import com.google.firebase.database.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AdminCategoriesActivity extends AppCompatActivity {
+public class AdminCategoriesFragment extends Fragment {
 
     private RecyclerView recyclerViewFoods;
     private DatabaseReference foodsRef;
     private List<ItemAdminCategory> foodList = new ArrayList<>();
     private FoodAdapter foodAdapter;
 
+    @SuppressLint("MissingInflatedId")
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_admin_categories);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
 
-        recyclerViewFoods = findViewById(R.id.recyclerViewFoods);
-        foodsRef = FirebaseDatabase.getInstance().getReference("foods");
+        View view = inflater.inflate(R.layout.fragment_admin_categories, container, false);
 
-        recyclerViewFoods.setLayoutManager(new LinearLayoutManager(this));
+        recyclerViewFoods = view.findViewById(R.id.recyclerViewFoods);
+        recyclerViewFoods.setLayoutManager(new LinearLayoutManager(getContext()));
         foodAdapter = new FoodAdapter(foodList);
         recyclerViewFoods.setAdapter(foodAdapter);
 
+        foodsRef = FirebaseDatabase.getInstance().getReference("foods");
+
         loadFoods(); // Load all foods from Firebase
+
+        return view;
     }
 
-    // ------------------ Load Foods ------------------
     private void loadFoods() {
         foodsRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -58,18 +65,17 @@ public class AdminCategoriesActivity extends AppCompatActivity {
                 foodAdapter.notifyDataSetChanged();
 
                 if (foodList.isEmpty()) {
-                    Toast.makeText(AdminCategoriesActivity.this, "No foods found.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "No foods found.", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(AdminCategoriesActivity.this, "Failed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Failed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // ------------------ RecyclerView Adapter ------------------
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
 
         private final List<ItemAdminCategory> foods;
@@ -96,7 +102,6 @@ public class AdminCategoriesActivity extends AppCompatActivity {
             holder.tvPrepTime.setText(food.getPrepTime() + " mins");
             holder.tvDesc.setText(food.getDescription());
 
-            // Set image
             if (food.getImageBase64() != null && !food.getImageBase64().isEmpty()) {
                 Bitmap bmp = base64ToBitmap(food.getImageBase64());
                 holder.ivFoodImage.setImageBitmap(bmp);
@@ -104,26 +109,24 @@ public class AdminCategoriesActivity extends AppCompatActivity {
                 holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             }
 
-            // ------------------ Availability ------------------
             holder.switchAvailable.setChecked(food.isAvailable());
             holder.switchAvailable.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 food.setAvailable(isChecked);
                 foodsRef.child(food.getKey()).child("available").setValue(isChecked);
             });
 
-            // ------------------ Update & Delete ------------------
             holder.btnUpdate.setOnClickListener(v -> showAdminUpdateFoodDialog(food));
 
             holder.btnDelete.setOnClickListener(v -> {
-                new AlertDialog.Builder(AdminCategoriesActivity.this)
+                new AlertDialog.Builder(getContext())
                         .setTitle("Delete Food")
                         .setMessage("Are you sure you want to delete " + food.getName() + "?")
                         .setPositiveButton("Yes", (dialog, which) ->
                                 foodsRef.child(food.getKey()).removeValue()
                                         .addOnSuccessListener(aVoid ->
-                                                Toast.makeText(AdminCategoriesActivity.this, "Deleted " + food.getName(), Toast.LENGTH_SHORT).show())
+                                                Toast.makeText(getContext(), "Deleted " + food.getName(), Toast.LENGTH_SHORT).show())
                                         .addOnFailureListener(e ->
-                                                Toast.makeText(AdminCategoriesActivity.this, "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
+                                                Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
                         .setNegativeButton("No", null)
                         .show();
             });
@@ -155,9 +158,8 @@ public class AdminCategoriesActivity extends AppCompatActivity {
         }
     }
 
-    // ------------------ Admin Update Modal ------------------
     private void showAdminUpdateFoodDialog(ItemAdminCategory food) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Admin: Update Food");
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_admin_update_food, null);
@@ -170,14 +172,12 @@ public class AdminCategoriesActivity extends AppCompatActivity {
         EditText etDesc = dialogView.findViewById(R.id.etAdminFoodDesc);
         Spinner spCategory = dialogView.findViewById(R.id.spAdminFoodCategory);
 
-        // Populate fields
         etName.setText(food.getName());
         etPrice.setText(String.valueOf(food.getPrice()));
         etPrepTime.setText(food.getPrepTime());
         etDesc.setText(food.getDescription());
 
-        // Spinner
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
                 android.R.layout.simple_spinner_item,
                 new String[]{"Main Dish", "Drinks", "Dessert", "Snacks"});
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -187,15 +187,13 @@ public class AdminCategoriesActivity extends AppCompatActivity {
             if (pos >= 0) spCategory.setSelection(pos);
         }
 
-        // Load image
         if (food.getImageBase64() != null && !food.getImageBase64().isEmpty()) {
             Bitmap bmp = base64ToBitmap(food.getImageBase64());
             if (bmp != null) ivFood.setImageBitmap(bmp);
         }
 
-        // Buttons
         builder.setPositiveButton("Update", (dialog, which) -> {
-            new AlertDialog.Builder(AdminCategoriesActivity.this)
+            new AlertDialog.Builder(getContext())
                     .setTitle("Confirm Admin Update")
                     .setMessage("Are you sure you want to update " + food.getName() + "?")
                     .setPositiveButton("Yes", (d, w) -> {
@@ -206,8 +204,8 @@ public class AdminCategoriesActivity extends AppCompatActivity {
                         food.setCategory(spCategory.getSelectedItem().toString());
 
                         foodsRef.child(food.getKey()).setValue(food)
-                                .addOnSuccessListener(aVoid -> Toast.makeText(AdminCategoriesActivity.this, "Updated successfully", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(AdminCategoriesActivity.this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Updated successfully", Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                     })
                     .setNegativeButton("No", null)
                     .show();
@@ -217,7 +215,6 @@ public class AdminCategoriesActivity extends AppCompatActivity {
         builder.show();
     }
 
-    // ------------------ Helper ------------------
     public static Bitmap base64ToBitmap(String base64Str) {
         try {
             byte[] decoded = Base64.decode(base64Str, Base64.DEFAULT);
@@ -227,18 +224,13 @@ public class AdminCategoriesActivity extends AppCompatActivity {
         }
     }
 
-    // ------------------ Data Model ------------------
     public static class ItemAdminCategory {
-        private String key;
-        private String category;
-        private String description;
-        private String name;
-        private String prepTime;
+        private String key, category, description, name, prepTime;
         private double price;
         private String imageBase64;
         private boolean available = true;
 
-        public ItemAdminCategory() {} // Required for Firebase
+        public ItemAdminCategory() {}
 
         public String getKey() { return key; }
         public void setKey(String key) { this.key = key; }
