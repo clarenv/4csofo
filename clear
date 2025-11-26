@@ -1,0 +1,24 @@
+* [33md82512e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandrei[m[33m, [m[1;31morigin/clarenv[m[33m, [m[1;31morigin/andrei[m[33m, [m[1;31mclarenv/clarenv[m[33m, [m[1;31mclarenv/andrei[m[33m, [m[1;32mmaster[m[33m)[m nov 26, 2025
+* [33m797bfa9[m ito yung mepps
+*   [33m890a9dc[m Client
+[32m|[m[33m\[m  
+[32m|[m * [33mf0c9f4f[m Ito yun changes
+[32m|[m *   [33me94f69e[m Cleanup before pushing
+[32m|[m [34m|[m[35m\[m  
+* [34m|[m [35m\[m   [33m7f99648[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;31mclarenv/master[m[33m)[m ito yung mepps
+[34m|[m[35m\[m [34m\[m [35m\[m  
+[34m|[m [35m|[m[34m/[m [35m/[m  
+[34m|[m[34m/[m[35m|[m [35m/[m   
+[34m|[m [35m|[m[35m/[m    
+[34m|[m *   [33m4bcf674[m Merge pull request #2 from clarenv/master
+[34m|[m [1;32m|[m[1;33m\[m  
+* [1;32m|[m [1;33m|[m [33m7a34dcd[m Ito yun bago kong gawa
+[1;33m|[m [1;32m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[1;32m|[m   
+* [1;32m|[m [33me78246d[m Initial upload for 4csofo project
+[1;32m|[m[1;32m/[m  
+*   [33md236272[m Merge pull request #1 from Aristurtle0114/Dev
+[1;34m|[m[1;35m\[m  
+[1;34m|[m * [33m48ed4d2[m Refactor MainActivity layout and implement Bottom Navigation. Update login and main activity layouts for improved UI with new styles and color palette. Enhance food item display with additional details and modern card design.
+[1;34m|[m[1;34m/[m  
+* [33m402b2bc[m Initial commit
