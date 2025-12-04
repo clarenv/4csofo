@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private List<FoodItem> foodList = new ArrayList<>();
     private FoodAdapter foodAdapter;
+    private DatabaseReference usersRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,8 +46,9 @@ public class MainActivity extends AppCompatActivity {
         recyclerViewFood = findViewById(R.id.recyclerViewFood);
         bottomNavigation = findViewById(R.id.bottomNavigation);
         ivCartIcon = findViewById(R.id.ivCartIcon);
+        usersRef = FirebaseDatabase.getInstance().getReference("users");
 
-        // Set welcome message
+        // Welcome message
         FirebaseUser user = auth.getCurrentUser();
         String userName = "Customer";
         if (user != null && user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
@@ -60,22 +62,48 @@ public class MainActivity extends AppCompatActivity {
         recyclerViewFood.setLayoutManager(new LinearLayoutManager(this));
         foodAdapter = new FoodAdapter(foodList);
         recyclerViewFood.setAdapter(foodAdapter);
-
         loadFoodItemsFromFirebase();
 
         // Bottom navigation
         bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_home) return true;
-            else if (itemId == R.id.nav_cart) startActivity(new Intent(MainActivity.this, CartActivity.class));
-            else if (itemId == R.id.nav_orders) startActivity(new Intent(MainActivity.this, OrdersActivity.class));
-            else if (itemId == R.id.nav_profile) startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+            int id = item.getItemId();
+            if (id == R.id.nav_home) return true;
+            else if (id == R.id.nav_cart) startActivity(new Intent(this, CartActivity.class));
+            else if (id == R.id.nav_orders) startActivity(new Intent(this, OrdersActivity.class));
+            else if (id == R.id.nav_profile) startActivity(new Intent(this, ProfileActivity.class));
             return true;
         });
 
-        ivCartIcon.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CartActivity.class)));
+        ivCartIcon.setOnClickListener(v -> startActivity(new Intent(this, CartActivity.class)));
     }
 
+    /** ------------------ USER ONLINE/OFFLINE ------------------ **/
+    @Override
+    protected void onStart() {
+        super.onStart();
+        setUserOnlineStatus(true);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        setUserOnlineStatus(false);
+    }
+
+    private void setUserOnlineStatus(boolean isOnline) {
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null) {
+            DatabaseReference statusRef = usersRef.child(currentUser.getUid()).child("online");
+            if (isOnline) {
+                statusRef.setValue(true);
+                statusRef.onDisconnect().setValue(false);
+            } else {
+                statusRef.setValue(false);
+            }
+        }
+    }
+
+    /** ------------------ FOOD DASHBOARD ------------------ **/
     private void loadFoodItemsFromFirebase() {
         DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
         foodRef.get().addOnSuccessListener(snapshot -> {
@@ -86,29 +114,25 @@ public class MainActivity extends AppCompatActivity {
             }
             foodAdapter.notifyDataSetChanged();
         }).addOnFailureListener(e ->
-                Toast.makeText(MainActivity.this, "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
         );
     }
 
-    // Helper method to convert Base64 string to Bitmap
     public static Bitmap base64ToBitmap(String base64Str) {
         try {
-            byte[] decodedBytes = Base64.decode(base64Str, Base64.DEFAULT);
-            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+            byte[] decoded = Base64.decode(base64Str, Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    // Adapter for food items
+    /** ------------------ FOOD ADAPTER ------------------ **/
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
-
         private final List<FoodItem> foods;
 
-        public FoodAdapter(List<FoodItem> foods) {
-            this.foods = foods;
-        }
+        public FoodAdapter(List<FoodItem> foods) { this.foods = foods; }
 
         @NonNull
         @Override
@@ -127,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
             holder.tvCategory.setText(food.category);
             holder.tvPrepTime.setText(food.prepTime + " mins");
 
-            // Load Base64 image
             if (food.base64Image != null && !food.base64Image.isEmpty()) {
                 Bitmap bitmap = base64ToBitmap(food.base64Image);
                 if (bitmap != null) holder.ivFoodImage.setImageBitmap(bitmap);
@@ -136,19 +159,13 @@ public class MainActivity extends AppCompatActivity {
                 holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             }
 
-            // ------------------ Handle Availability ------------------
-            // Gray out and disable add to cart if not available
-            holder.itemView.setAlpha(food.available ? 1.0f : 0.5f);
+            holder.itemView.setAlpha(food.available ? 1f : 0.5f);
             holder.btnAddCart.setEnabled(food.available);
-
-            // Add to Cart button
             holder.btnAddCart.setOnClickListener(v -> addToCart(food));
         }
 
         @Override
-        public int getItemCount() {
-            return foods.size();
-        }
+        public int getItemCount() { return foods.size(); }
 
         private void addToCart(FoodItem food) {
             FirebaseUser currentUser = auth.getCurrentUser();
@@ -156,18 +173,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Please log in first", Toast.LENGTH_SHORT).show();
                 return;
             }
-
             DatabaseReference cartRef = FirebaseDatabase.getInstance()
                     .getReference("carts")
                     .child(currentUser.getUid())
                     .push();
-
-            cartRef.setValue(food)
-                    .addOnSuccessListener(aVoid ->
+            cartRef.setValue(food).addOnSuccessListener(aVoid ->
                             Toast.makeText(MainActivity.this, food.name + " added to cart!", Toast.LENGTH_SHORT).show())
                     .addOnFailureListener(e ->
-                            Toast.makeText(MainActivity.this, "Failed to add to cart: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                    );
+                            Toast.makeText(MainActivity.this, "Failed to add to cart: " + e.getMessage(), Toast.LENGTH_SHORT).show());
         }
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
@@ -188,16 +201,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // FoodItem class for Firebase
+    /** ------------------ FOOD MODEL ------------------ **/
     public static class FoodItem {
         public String name;
         public String description;
         public String category;
         public String prepTime;
         public double price;
-        public String base64Image; // use this instead of imageUrl
-        public boolean available = true; // added field for availability
+        public String base64Image;
+        public boolean available = true;
 
-        public FoodItem() {} // Required for Firebase
+        public FoodItem() {}
     }
 }

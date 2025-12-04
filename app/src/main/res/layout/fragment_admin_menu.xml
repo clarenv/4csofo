@@ -17,6 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Food Name -->
             <EditText
                 android:id="@+id/etName"
                 android:hint="Food Name"
@@ -26,6 +27,7 @@
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_secondary"/>
 
+            <!-- Price -->
             <EditText
                 android:id="@+id/etPrice"
                 android:hint="Price"
@@ -34,8 +36,22 @@
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/primary"
                 android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"/>
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
 
+            <!-- Discount / Promo Price -->
+            <EditText
+                android:id="@+id/etDiscountPrice"
+                android:hint="Discount / Promo Price"
+                android:inputType="numberDecimal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Preparation Time -->
             <EditText
                 android:id="@+id/etPrepTime"
                 android:hint="Preparation Time (minutes)"
@@ -44,14 +60,63 @@
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/primary"
                 android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"/>
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
 
+            <!-- Category -->
             <Spinner
                 android:id="@+id/spCategory"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/primary"/>
+                android:backgroundTint="@color/primary"
+                android:layout_marginTop="4dp"/>
 
+            <!-- Add-ons / Extras -->
+            <EditText
+                android:id="@+id/etAddOns"
+                android:hint="Add-ons (drinks, dips, toppings)"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Ingredients -->
+            <EditText
+                android:id="@+id/etIngredients"
+                android:hint="Ingredients"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Serving Size -->
+            <EditText
+                android:id="@+id/etServingSize"
+                android:hint="Serving Size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Calories -->
+            <EditText
+                android:id="@+id/etCalories"
+                android:hint="Calories"
+                android:inputType="number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
+
+            <!-- Description -->
             <EditText
                 android:id="@+id/etDescription"
                 android:hint="Description"
@@ -59,8 +124,19 @@
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/primary"
                 android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"/>
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginTop="4dp"/>
 
+            <!-- In Stock Switch -->
+            <Switch
+                android:id="@+id/switchInStock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Available"
+                android:checked="true"
+                android:layout_marginTop="8dp"/>
+
+            <!-- Image Picker -->
             <Button
                 android:id="@+id/btnPickImage"
                 android:text="Select Image"
@@ -70,6 +146,7 @@
                 android:backgroundTint="@color/primary"
                 android:textColor="@color/text_white"/>
 
+            <!-- Image Preview -->
             <ImageView
                 android:id="@+id/ivFoodPreview"
                 android:layout_width="match_parent"
@@ -78,6 +155,7 @@
                 android:scaleType="centerCrop"
                 android:background="@color/background_card"/>
 
+            <!-- Add Food Button -->
             <Button
                 android:id="@+id/btnAddFood"
                 android:text="Add Food Item"
@@ -88,5 +166,4 @@
                 android:textColor="@color/text_white"/>
         </LinearLayout>
     </ScrollView>
-
 </LinearLayout>

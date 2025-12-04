@@ -102,6 +102,14 @@ public class AdminCategoriesFragment extends Fragment {
             holder.tvPrepTime.setText(food.getPrepTime() + " mins");
             holder.tvDesc.setText(food.getDescription());
 
+            // Extras: Add-ons, Ingredients, Serving Size, Calories
+            String extrasText = "";
+            if (food.getAddOns() != null) extrasText += "Add-ons: " + String.join(", ", food.getAddOns()) + "\n";
+            if (food.getIngredients() != null) extrasText += "Ingredients: " + String.join(", ", food.getIngredients()) + "\n";
+            if (food.getServingSize() != null) extrasText += "Serving Size: " + food.getServingSize() + "\n";
+            extrasText += "Calories: " + food.getCalories();
+            holder.tvExtras.setText(extrasText);
+
             if (food.getImageBase64() != null && !food.getImageBase64().isEmpty()) {
                 Bitmap bmp = base64ToBitmap(food.getImageBase64());
                 holder.ivFoodImage.setImageBitmap(bmp);
@@ -115,7 +123,7 @@ public class AdminCategoriesFragment extends Fragment {
                 foodsRef.child(food.getKey()).child("available").setValue(isChecked);
             });
 
-            holder.btnUpdate.setOnClickListener(v -> showAdminUpdateFoodDialog(food));
+            holder.btnUpdate.setOnClickListener(v -> showAdminUpdateFoodDialog(food, position));
 
             holder.btnDelete.setOnClickListener(v -> {
                 new AlertDialog.Builder(getContext())
@@ -139,7 +147,7 @@ public class AdminCategoriesFragment extends Fragment {
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
             ImageView ivFoodImage;
-            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime;
+            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime, tvExtras;
             Button btnUpdate, btnDelete;
             Switch switchAvailable;
 
@@ -151,6 +159,7 @@ public class AdminCategoriesFragment extends Fragment {
                 tvDesc = itemView.findViewById(R.id.tvFoodDesc);
                 tvCategory = itemView.findViewById(R.id.tvFoodCategory);
                 tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
+                tvExtras = itemView.findViewById(R.id.tvFoodExtras); // Added extras
                 btnUpdate = itemView.findViewById(R.id.btnUpdate);
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 switchAvailable = itemView.findViewById(R.id.switchAvailable);
@@ -158,7 +167,7 @@ public class AdminCategoriesFragment extends Fragment {
         }
     }
 
-    private void showAdminUpdateFoodDialog(ItemAdminCategory food) {
+    private void showAdminUpdateFoodDialog(ItemAdminCategory food, int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Admin: Update Food");
 
@@ -204,7 +213,12 @@ public class AdminCategoriesFragment extends Fragment {
                         food.setCategory(spCategory.getSelectedItem().toString());
 
                         foodsRef.child(food.getKey()).setValue(food)
-                                .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Updated successfully", Toast.LENGTH_SHORT).show())
+                                .addOnSuccessListener(aVoid -> {
+                                    Toast.makeText(getContext(), "Updated successfully", Toast.LENGTH_SHORT).show();
+                                    // Immediately update RecyclerView
+                                    foodList.set(position, food);
+                                    foodAdapter.notifyItemChanged(position);
+                                })
                                 .addOnFailureListener(e -> Toast.makeText(getContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                     })
                     .setNegativeButton("No", null)
@@ -225,8 +239,10 @@ public class AdminCategoriesFragment extends Fragment {
     }
 
     public static class ItemAdminCategory {
-        private String key, category, description, name, prepTime;
+        private String key, category, description, name, prepTime, servingSize;
         private double price;
+        private int calories;
+        private List<String> addOns, ingredients;
         private String imageBase64;
         private boolean available = true;
 
@@ -248,5 +264,13 @@ public class AdminCategoriesFragment extends Fragment {
         public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
         public boolean isAvailable() { return available; }
         public void setAvailable(boolean available) { this.available = available; }
+        public List<String> getAddOns() { return addOns; }
+        public void setAddOns(List<String> addOns) { this.addOns = addOns; }
+        public List<String> getIngredients() { return ingredients; }
+        public void setIngredients(List<String> ingredients) { this.ingredients = ingredients; }
+        public String getServingSize() { return servingSize; }
+        public void setServingSize(String servingSize) { this.servingSize = servingSize; }
+        public int getCalories() { return calories; }
+        public void setCalories(int calories) { this.calories = calories; }
     }
 }

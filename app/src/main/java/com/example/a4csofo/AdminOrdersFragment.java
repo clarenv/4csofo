@@ -5,7 +5,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,9 +29,11 @@ public class AdminOrdersFragment extends Fragment {
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
     private TextView emptyStateText;
+    private Spinner spinnerFilterStatus;
 
     private AdminManageOrdersAdapter adapter;
-    private ArrayList<OrderModel> orderList = new ArrayList<>();
+    private final ArrayList<OrderModel> orderList = new ArrayList<>();
+    private final ArrayList<OrderModel> filteredList = new ArrayList<>();
     private DatabaseReference ordersRef;
 
     private static final String TAG = "AdminOrdersFragment";
@@ -44,6 +48,7 @@ public class AdminOrdersFragment extends Fragment {
 
         initViews(view);
         setupRecycler();
+        setupStatusFilter();
         initFirebase();
         fetchOrders();
 
@@ -54,12 +59,38 @@ public class AdminOrdersFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recyclerOrders);
         progressBar = view.findViewById(R.id.progressLoadingOrders);
         emptyStateText = view.findViewById(R.id.textNoOrders);
+        spinnerFilterStatus = view.findViewById(R.id.spinnerFilterStatus);
     }
 
     private void setupRecycler() {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new AdminManageOrdersAdapter(getContext(), orderList);
+        adapter = new AdminManageOrdersAdapter(getContext(), filteredList, this);
         recyclerView.setAdapter(adapter);
+    }
+
+    private void setupStatusFilter() {
+        ArrayAdapter<CharSequence> filterAdapter = ArrayAdapter.createFromResource(
+                getContext(),
+                R.array.order_status_array_filter,
+                android.R.layout.simple_spinner_item
+        );
+        filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerFilterStatus.setAdapter(filterAdapter);
+
+        spinnerFilterStatus.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                String selected = spinnerFilterStatus.getSelectedItem() != null
+                        ? spinnerFilterStatus.getSelectedItem().toString()
+                        : "All";
+                applyFilter(selected);
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                applyFilter("All");
+            }
+        });
     }
 
     private void initFirebase() {
@@ -79,7 +110,12 @@ public class AdminOrdersFragment extends Fragment {
                     parseOrders(snapshot);
                 }
 
-                updateUI();
+                // Always apply current filter after fetching
+                String currentFilter = spinnerFilterStatus.getSelectedItem() != null
+                        ? spinnerFilterStatus.getSelectedItem().toString()
+                        : "All";
+                applyFilter(currentFilter);
+                showLoading(false);
             }
 
             @Override
@@ -95,35 +131,46 @@ public class AdminOrdersFragment extends Fragment {
         for (DataSnapshot snap : snapshot.getChildren()) {
             try {
                 OrderModel order = snap.getValue(OrderModel.class);
-
                 if (order != null) {
                     order.setOrderKey(snap.getKey());
-
-                    // default fallback values
                     if (order.getStatus() == null) order.setStatus("Pending");
-                    if (order.getPayment_method() == null) order.setPayment_method("N/A");
+                    if (order.getPaymentMethod() == null) order.setPaymentMethod("N/A");
                     if (order.getCustomerName() == null) order.setCustomerName("Unknown");
 
                     orderList.add(order);
+                } else {
+                    Log.w(TAG, "Null OrderModel at key: " + snap.getKey());
                 }
-
             } catch (Exception e) {
-                Log.e(TAG, "Data parsing error", e);
+                Log.e(TAG, "Data parsing error at key: " + snap.getKey(), e);
             }
         }
     }
 
-    private void updateUI() {
-        showLoading(false);
+    private void applyFilter(String status) {
+        filteredList.clear();
 
-        if (orderList.isEmpty()) {
+        if ("All".equalsIgnoreCase(status)) {
+            filteredList.addAll(orderList);
+        } else {
+            for (OrderModel order : orderList) {
+                if (order.getStatus() != null && order.getStatus().equalsIgnoreCase(status)) {
+                    filteredList.add(order);
+                }
+            }
+        }
+
+        updateUI();
+    }
+
+    private void updateUI() {
+        if (filteredList.isEmpty()) {
             emptyStateText.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
         } else {
             emptyStateText.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
         }
-
         adapter.notifyDataSetChanged();
     }
 
@@ -137,7 +184,7 @@ public class AdminOrdersFragment extends Fragment {
         }
     }
 
-    // OPTIONAL — ready for status change feature
+    // Called from adapter to update status in Firebase
     public void updateOrderStatus(OrderModel order, String newStatus) {
         if (order == null || order.getOrderKey() == null) return;
 

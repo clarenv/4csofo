@@ -2,13 +2,23 @@
 <resources>
     <string name="app_name">4CSOFO</string>
 
-    <!-- Order Status Array -->
+    <!-- Order Status Array for Spinner in Each Order Item -->
     <string-array name="order_status_array">
         <item>Pending</item>
         <item>Preparing</item>
-        <item>Delivering</item>
+        <item>Ready</item>
         <item>Delivered</item>
+        <item>Cancelled</item>
     </string-array>
 
+    <!-- Order Status Array for Filter Spinner -->
+    <string-array name="order_status_array_filter">
+        <item>All</item>
+        <item>Pending</item>
+        <item>Preparing</item>
+        <item>Ready</item>
+        <item>Delivered</item>
+        <item>Cancelled</item>
+    </string-array>
 
 </resources>

@@ -52,7 +52,7 @@
             android:inputType="numberDecimal"
             android:hint="Price" />
 
-        <!-- Prep Time -->
+        <!-- Preparation Time -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -76,6 +76,51 @@
             android:hint="Description"
             android:inputType="textMultiLine"
             android:minLines="3"/>
+
+        <!-- Add-ons -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add-ons (comma separated):"/>
+        <EditText
+            android:id="@+id/etAdminFoodAddOns"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Add-ons" />
+
+        <!-- Ingredients -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ingredients (comma separated):"/>
+        <EditText
+            android:id="@+id/etAdminFoodIngredients"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ingredients" />
+
+        <!-- Serving Size -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Serving Size:"/>
+        <EditText
+            android:id="@+id/etAdminFoodServingSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Serving Size" />
+
+        <!-- Calories -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Calories:"/>
+        <EditText
+            android:id="@+id/etAdminFoodCalories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="Calories" />
 
     </LinearLayout>
 </ScrollView>

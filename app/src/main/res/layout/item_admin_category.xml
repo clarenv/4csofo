@@ -25,7 +25,7 @@
             android:src="@drawable/ic_placeholder"
             android:background="@color/background_light" />
 
-        <!-- Food Details + RUD buttons -->
+        <!-- Food Details + Buttons -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -74,7 +74,19 @@
                 android:textColor="@color/text_secondary"
                 android:ellipsize="end"
                 android:maxLines="2"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="4dp" />
+
+            <!-- Extras: Add-ons, Ingredients, Serving size, Calories -->
+            <TextView
+                android:id="@+id/tvFoodExtras"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Extras info"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:ellipsize="end"
+                android:maxLines="4"
+                android:layout_marginBottom="4dp" />
 
             <Switch
                 android:id="@+id/switchAvailable"
@@ -82,8 +94,8 @@
                 android:layout_height="wrap_content"
                 android:text="Available"
                 android:checked="true"
+                android:layout_marginBottom="8dp"
                 tools:ignore="UseSwitchCompatOrMaterialXml" />
-
 
             <!-- RUD Buttons -->
             <LinearLayout
@@ -106,10 +118,8 @@
                     android:textSize="12sp"
                     android:layout_marginStart="8dp" />
 
-
             </LinearLayout>
 
         </LinearLayout>
     </LinearLayout>
-
 </androidx.cardview.widget.CardView>

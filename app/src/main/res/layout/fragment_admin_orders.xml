@@ -19,6 +19,14 @@
         android:textStyle="bold"
         android:layout_marginBottom="12dp" />
 
+    <!-- Filter Spinner -->
+    <Spinner
+        android:id="@+id/spinnerFilterStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:spinnerMode="dropdown"
+        android:layout_marginBottom="12dp" />
+
     <!-- Progress Loading Indicator -->
     <ProgressBar
         android:id="@+id/progressLoadingOrders"

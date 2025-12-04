@@ -15,6 +15,7 @@ public class OrderModel {
     private String payment_method;
     private String status;
     private String transaction_number;
+    private String gcashProof;        // <-- Added for GCash proof of payment
 
     // Default constructor required for Firebase
     public OrderModel() {}
@@ -40,11 +41,10 @@ public class OrderModel {
     public String getPayment_method() { return payment_method; }
     public String getStatus() { return status; }
     public String getTransaction_number() { return transaction_number; }
+    public String getGcashProof() { return gcashProof; }  // <-- new getter
 
     // Legacy getter para sa Adapter compatibility
-    public String getCustomer_name() {
-        return getCustomerName();
-    }
+    public String getCustomer_name() { return getCustomerName(); }
 
     // Setters
     public void setOrderKey(String orderKey) { this.orderKey = orderKey; }
@@ -55,6 +55,7 @@ public class OrderModel {
     public void setPayment_method(String payment_method) { this.payment_method = payment_method; }
     public void setStatus(String status) { this.status = status; }
     public void setTransaction_number(String transaction_number) { this.transaction_number = transaction_number; }
+    public void setGcashProof(String gcashProof) { this.gcashProof = gcashProof; } // <-- new setter
 
     // Helper method: return items as comma-separated string
     public String getItemsAsString() {
