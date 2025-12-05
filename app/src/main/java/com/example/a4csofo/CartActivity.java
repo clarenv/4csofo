@@ -18,6 +18,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CartActivity extends AppCompatActivity {
 
@@ -37,41 +39,28 @@ public class CartActivity extends AppCompatActivity {
         listViewCart = findViewById(R.id.listViewCart);
         btnProceedCheckout = findViewById(R.id.btnProceedCheckout);
 
-        // 🔹 Initialize Bottom Navigation
+        // ---------------- Bottom Navigation ----------------
         BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
-        bottomNavigation.setSelectedItemId(R.id.nav_cart); // highlight current tab
+        bottomNavigation.setSelectedItemId(R.id.nav_cart);
 
-        bottomNavigation.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull android.view.MenuItem item) {
-                int itemId = item.getItemId();
+        bottomNavigation.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
 
-                if (itemId == R.id.nav_home) {
-                    startActivity(new Intent(CartActivity.this, MainActivity.class));
-                    overridePendingTransition(0, 0);
-                    return true;
-
-                } else if (itemId == R.id.nav_cart) {
-                    // Already in CartActivity
-                    return true;
-
-                } else if (itemId == R.id.nav_orders) {
-                    // 🆕 Navigate to OrdersActivity
-                    startActivity(new Intent(CartActivity.this, OrdersActivity.class));
-                    overridePendingTransition(0, 0);
-                    return true;
-
-                } else if (itemId == R.id.nav_profile) {
-                    startActivity(new Intent(CartActivity.this, ProfileActivity.class));
-                    overridePendingTransition(0, 0);
-                    return true;
-                }
-
-                return false;
+            if (itemId == R.id.nav_home) {
+                startActivity(new Intent(CartActivity.this, MainActivity.class));
+                overridePendingTransition(0, 0);
+            } else if (itemId == R.id.nav_orders) {
+                startActivity(new Intent(CartActivity.this, OrdersActivity.class));
+                overridePendingTransition(0, 0);
+            } else if (itemId == R.id.nav_profile) {
+                startActivity(new Intent(CartActivity.this, ProfileActivity.class));
+                overridePendingTransition(0, 0);
             }
+            // Return true to indicate item selection handled
+            return true;
         });
 
-        // 🔹 Firebase Authentication
+        // ---------------- Firebase Authentication ----------------
         auth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = auth.getCurrentUser();
 
@@ -81,27 +70,50 @@ public class CartActivity extends AppCompatActivity {
             return;
         }
 
-        // 🔹 Load Cart Items
+        // ---------------- Initialize Cart ----------------
         cartItems = new ArrayList<>();
         cartKeys = new ArrayList<>();
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_list_item_1, cartItems);
         listViewCart.setAdapter(adapter);
 
-        cartRef = FirebaseDatabase.getInstance().getReference("carts").child(currentUser.getUid());
+        cartRef = FirebaseDatabase.getInstance()
+                .getReference("carts")
+                .child(currentUser.getUid());
 
+        // Load and merge cart items
         cartRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartItems.clear();
                 cartKeys.clear();
+
+                // Merge items by name
+                Map<String, Integer> itemQuantityMap = new HashMap<>();
+                Map<String, Double> itemPriceMap = new HashMap<>();
+                Map<String, String> itemKeysMap = new HashMap<>();
+
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    AdminMenuItemsFragment.FoodItem food = data.getValue(AdminMenuItemsFragment.FoodItem.class);
+                    MainActivity.CartFoodItem food = data.getValue(MainActivity.CartFoodItem.class);
                     if (food != null) {
-                        cartItems.add(food.name + " - ₱" + food.price);
-                        cartKeys.add(data.getKey());
+                        // Merge quantity if item exists
+                        itemQuantityMap.put(food.name,
+                                itemQuantityMap.getOrDefault(food.name, 0) + food.quantity);
+                        if (!itemPriceMap.containsKey(food.name)) {
+                            itemPriceMap.put(food.name, food.price);
+                            itemKeysMap.put(food.name, data.getKey());
+                        }
                     }
                 }
+
+                // Populate cartItems and cartKeys
+                for (String name : itemQuantityMap.keySet()) {
+                    int qty = itemQuantityMap.get(name);
+                    double price = itemPriceMap.get(name);
+                    cartItems.add(name + " x" + qty + " - ₱" + (price * qty));
+                    cartKeys.add(itemKeysMap.get(name));
+                }
+
                 adapter.notifyDataSetChanged();
 
                 if (cartItems.isEmpty()) {
@@ -115,7 +127,7 @@ public class CartActivity extends AppCompatActivity {
             }
         });
 
-        // 🔹 Long click to remove item
+        // ---------------- Remove Item on Long Click ----------------
         listViewCart.setOnItemLongClickListener((parent, view, position, id) -> {
             String itemName = cartItems.get(position);
             String key = cartKeys.get(position);
@@ -123,27 +135,24 @@ public class CartActivity extends AppCompatActivity {
             new AlertDialog.Builder(CartActivity.this)
                     .setTitle("Remove Item")
                     .setMessage("Do you want to remove " + itemName + " from your cart?")
-                    .setPositiveButton("Yes", (dialog, which) -> {
-                        cartRef.child(key).removeValue()
-                                .addOnSuccessListener(aVoid -> Toast.makeText(CartActivity.this,
-                                        itemName + " removed from cart", Toast.LENGTH_SHORT).show())
-                                .addOnFailureListener(e -> Toast.makeText(CartActivity.this,
-                                        "Failed to remove item: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                    })
+                    .setPositiveButton("Yes", (dialog, which) -> cartRef.child(key).removeValue()
+                            .addOnSuccessListener(aVoid ->
+                                    Toast.makeText(CartActivity.this, itemName + " removed from cart", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(CartActivity.this, "Failed to remove item: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
                     .setNegativeButton("No", null)
                     .show();
 
             return true;
         });
 
-        // 🔹 Proceed to checkout
+        // ---------------- Proceed to Checkout ----------------
         btnProceedCheckout.setOnClickListener(v -> {
             if (cartItems.isEmpty()) {
                 Toast.makeText(this, "Your cart is empty!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            Intent intent = new Intent(CartActivity.this, CheckoutActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(CartActivity.this, CheckoutActivity.class));
         });
     }
 }

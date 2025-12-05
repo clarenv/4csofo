@@ -10,6 +10,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- Title -->
         <TextView
             android:id="@+id/tvCheckoutTitle"
             android:layout_width="wrap_content"
@@ -19,6 +20,7 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp"/>
 
+        <!-- Cart items container -->
         <LinearLayout
             android:id="@+id/cartContainer"
             android:layout_width="match_parent"
@@ -38,56 +40,90 @@
             android:orientation="vertical"
             android:padding="8dp">
 
-            <TextView
-                android:text="Subtotal:"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtSubtotal"
-                android:layout_width="wrap_content"
+            <!-- Subtotal -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:orientation="horizontal">
 
-            <TextView
-                android:text="VAT (20%):"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtVat"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Subtotal:" />
 
-            <TextView
-                android:text="Delivery Fee:"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-            <TextView
-                android:id="@+id/txtDelivery"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱30.00"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:id="@+id/txtSubtotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textStyle="bold"/>
+            </LinearLayout>
 
-            <TextView
-                android:text="Total:"
-                android:layout_width="wrap_content"
+            <!-- VAT -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-            <TextView
-                android:id="@+id/txtTotal"
-                android:layout_width="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="VAT (20%):" />
+
+                <TextView
+                    android:id="@+id/txtVat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Delivery Fee -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Delivery Fee:" />
+
+                <TextView
+                    android:id="@+id/txtDelivery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₱30.00"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Total -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Total:"
+                    android:textSize="18sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/txtTotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₱0.00"
+                    android:textSize="20sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
         </LinearLayout>
 
         <!-- Payment options -->
@@ -99,7 +135,6 @@
             android:textStyle="bold"
             android:layout_marginBottom="8dp"/>
 
-        <!-- ✅ UPDATED RADIOGROUP WITH 3 OPTIONS -->
         <RadioGroup
             android:id="@+id/paymentGroup"
             android:layout_width="match_parent"
@@ -124,6 +159,7 @@
                 android:text="Pick Up" />
         </RadioGroup>
 
+        <!-- Confirm button -->
         <Button
             android:id="@+id/btnConfirm"
             android:layout_width="match_parent"

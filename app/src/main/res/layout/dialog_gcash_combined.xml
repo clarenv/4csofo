@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- QR CODE -->
+        <ImageView
+            android:id="@+id/qrImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            android:src="@drawable/gcash_qr"
+            android:contentDescription="QR Code"/>
+
+        <!-- DELIVERY LOCATION OPTIONS -->
+        <RadioButton
+            android:id="@+id/rbCurrentLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Use Current Location"/>
+
+        <RadioButton
+            android:id="@+id/rbSavedAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Saved Address"
+            android:enabled="false"/>
+
+        <RadioButton
+            android:id="@+id/rbManualInput"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enter Address Manually"/>
+
+        <EditText
+            android:id="@+id/edtManualAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter address"
+            android:enabled="false"
+            android:padding="10dp"/>
+
+        <!-- GCash Proof & Ref Number -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Upload GCash Screenshot"
+            android:paddingTop="10dp"/>
+
+        <Button
+            android:id="@+id/btnChooseImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Choose Image"/>
+
+        <ImageView
+            android:id="@+id/imgPreview"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:layout_marginTop="10dp"/>
+
+        <EditText
+            android:id="@+id/edtReferenceNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter Reference Number"
+            android:padding="10dp"
+            android:inputType="number"/>
+
+        <Button
+            android:id="@+id/btnSavePayment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save Payment"/>
+
+    </LinearLayout>
+</ScrollView>

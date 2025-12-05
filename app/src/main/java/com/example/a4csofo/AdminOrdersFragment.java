@@ -64,7 +64,7 @@ public class AdminOrdersFragment extends Fragment {
 
     private void setupRecycler() {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new AdminManageOrdersAdapter(getContext(), filteredList, this);
+        adapter = new AdminManageOrdersAdapter(getContext(), filteredList);
         recyclerView.setAdapter(adapter);
     }
 
@@ -110,11 +110,12 @@ public class AdminOrdersFragment extends Fragment {
                     parseOrders(snapshot);
                 }
 
-                // Always apply current filter after fetching
+                // Apply filter
                 String currentFilter = spinnerFilterStatus.getSelectedItem() != null
                         ? spinnerFilterStatus.getSelectedItem().toString()
                         : "All";
                 applyFilter(currentFilter);
+
                 showLoading(false);
             }
 
@@ -131,16 +132,37 @@ public class AdminOrdersFragment extends Fragment {
         for (DataSnapshot snap : snapshot.getChildren()) {
             try {
                 OrderModel order = snap.getValue(OrderModel.class);
+
                 if (order != null) {
+
                     order.setOrderKey(snap.getKey());
+
                     if (order.getStatus() == null) order.setStatus("Pending");
-                    if (order.getPaymentMethod() == null) order.setPaymentMethod("N/A");
+                    if (order.getPayment_method() == null) order.setPayment_method("N/A");
                     if (order.getCustomerName() == null) order.setCustomerName("Unknown");
 
+                    if (order.getDeliveryLocation() != null)
+                        order.setDeliveryLocation(order.getDeliveryLocation());
+
+                    if (order.getOrderType() == null) order.setOrderType("delivery");
+                    if (order.getPickupTime() == null) order.setPickupTime("");
+                    if (order.getPickupBranch() == null) order.setPickupBranch("");
+
+                    if (order.getGcashReferenceNumber() == null)
+                        order.setGcashReferenceNumber("");
+
+                    if (order.getGcashProofDownloadUrl() == null)
+                        order.setGcashProofDownloadUrl("");
+
+                    if (order.getGcashProof() == null)
+                        order.setGcashProof("");
+
                     orderList.add(order);
+
                 } else {
                     Log.w(TAG, "Null OrderModel at key: " + snap.getKey());
                 }
+
             } catch (Exception e) {
                 Log.e(TAG, "Data parsing error at key: " + snap.getKey(), e);
             }
@@ -154,7 +176,8 @@ public class AdminOrdersFragment extends Fragment {
             filteredList.addAll(orderList);
         } else {
             for (OrderModel order : orderList) {
-                if (order.getStatus() != null && order.getStatus().equalsIgnoreCase(status)) {
+                if (order.getStatus() != null &&
+                        order.getStatus().equalsIgnoreCase(status)) {
                     filteredList.add(order);
                 }
             }
@@ -184,7 +207,7 @@ public class AdminOrdersFragment extends Fragment {
         }
     }
 
-    // Called from adapter to update status in Firebase
+    // Called from adapter
     public void updateOrderStatus(OrderModel order, String newStatus) {
         if (order == null || order.getOrderKey() == null) return;
 

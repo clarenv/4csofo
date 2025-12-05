@@ -19,12 +19,10 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
 
     private final Context context;
     private final ArrayList<OrderModel> orderList;
-    private final AdminOrdersFragment fragment;
 
-    public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList, AdminOrdersFragment fragment) {
+    public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList) {
         this.context = context;
         this.orderList = orderList;
-        this.fragment = fragment;
     }
 
     @NonNull
@@ -40,8 +38,13 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
 
         holder.tvOrderId.setText(order.getOrderKey() != null ? "ORD-" + order.getOrderKey() : "ORD-N/A");
         holder.tvCustomer.setText(order.getCustomerName());
+
+        // Use getFormattedTotal() or getTotal() to fix error
         holder.tvTotalPrice.setText(order.getTotal());
+
+        // Use getPaymentMethod() or getPaymentText() to fix error
         holder.tvPayment.setText("Payment: " + order.getPaymentMethod());
+
         holder.tvStatus.setText("Status: " + order.getStatus());
 
         // Setup spinner
@@ -62,19 +65,12 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
             String selectedStatus = holder.spinnerStatus.getSelectedItem().toString();
 
             if (order.getOrderKey() != null && !selectedStatus.equals(order.getStatus())) {
-                order.setStatus(selectedStatus); // local update
-                fragment.updateOrderStatus(order, selectedStatus); // Firebase update
+                order.updateStatus(selectedStatus); // update Firebase
                 holder.tvStatus.setText("Status: " + selectedStatus);
                 Toast.makeText(context, "Order status updated to " + selectedStatus, Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(context, "No changes to update", Toast.LENGTH_SHORT).show();
             }
-        });
-
-        // Optional: item click to open details page
-        holder.itemView.setOnClickListener(v -> {
-            // TODO: Open OrderDetailsFragment or Activity
-            Toast.makeText(context, "Click to view order details", Toast.LENGTH_SHORT).show();
         });
     }
 

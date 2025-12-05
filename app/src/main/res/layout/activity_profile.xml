@@ -32,39 +32,49 @@
                     android:padding="10dp"
                     android:textColor="#333" />
 
+                <!-- NAME -->
                 <EditText
                     android:id="@+id/edtName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Full Name"
-                    android:inputType="textPersonName"
                     android:enabled="false"
-                    android:background="@android:drawable/edit_text"
                     android:padding="10dp"
                     android:layout_marginTop="10dp" />
 
+                <!-- EMAIL -->
                 <EditText
                     android:id="@+id/edtEmail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Email Address"
-                    android:inputType="textEmailAddress"
                     android:enabled="false"
-                    android:background="@android:drawable/edit_text"
                     android:padding="10dp"
                     android:layout_marginTop="10dp" />
 
+                <!-- PHONE -->
+                <EditText
+                    android:id="@+id/edtPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Phone Number"
+                    android:enabled="false"
+                    android:inputType="phone"
+                    android:maxLength="11"
+                    android:padding="10dp"
+                    android:layout_marginTop="10dp" />
+
+                <!-- ADDRESS -->
                 <EditText
                     android:id="@+id/edtAddress"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Home Address"
-                    android:inputType="textPostalAddress"
                     android:enabled="false"
-                    android:background="@android:drawable/edit_text"
                     android:padding="10dp"
                     android:layout_marginTop="10dp" />
 
+                <!-- BUTTONS -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -105,10 +115,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@color/background_white"
         app:menu="@menu/bottom_navigation_menu"
         app:itemIconTint="@color/primary"
-        app:itemTextColor="@color/primary"
-        app:elevation="8dp" />
+        app:itemTextColor="@color/primary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

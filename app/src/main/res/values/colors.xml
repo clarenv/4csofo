@@ -1,19 +1,23 @@
 <resources>
 
-    <!-- Primary Brand Colors (from logo) -->
-    <color name="primary">#D55F39</color>          <!-- Red Bowl -->
-    <color name="primary_dark">#B44F30</color>     <!-- Darker Red -->
-    <color name="accent">#8FAE51</color>           <!-- Green Cart -->
-    <color name="accent_dark">#6A873C</color>      <!-- Dark Green -->
+    <!-- Primary Brand Colors -->
+    <color name="primary">#9FBD48</color>          <!-- From main background -->
+    <color name="primary_dark">#3C603C</color>     <!-- Dark green -->
+    <color name="accent">#D26426</color>           <!-- Orange accent -->
+    <color name="accent_dark">#74493D</color>      <!-- Brown accent -->
 
     <!-- Background Colors -->
-    <color name="background_light">#E9E9E9</color> <!-- Light Gray BG -->
+    <color name="background_light">#FFF7ED</color> <!-- Light cream -->
     <color name="background_white">#FFFFFF</color> <!-- White -->
-    <color name="background_card">#FFF9E6</color>  <!-- Light Cream (from yellow/orange area) -->
+    <color name="background_card">#F4F4F4</color>  <!-- Kept as is (no matching color in palette) -->
 
     <!-- Text Colors -->
-    <color name="text_white">#FFFFFF</color>       <!-- White Text -->
-    <color name="text_primary">#3A537D</color>     <!-- Deep Blue (matches “4C's” text) -->
-    <color name="text_secondary">#6A7A90</color>   <!-- Blue-gray -->
+    <color name="text_white">#FFFFFF</color>       <!-- White -->
+    <color name="text_primary">#3C603C</color>     <!-- Dark green for main text -->
+    <color name="text_secondary">#74493D</color>   <!-- Brown for secondary text -->
+
+    <!-- Extra Colors for Logo -->
+    <color name="white">#FFFFFF</color>
+    <color name="logo_stroke">#9FBD48</color>      <!-- Using main green background shade -->
 
 </resources>

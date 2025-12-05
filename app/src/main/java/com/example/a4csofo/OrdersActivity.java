@@ -34,26 +34,29 @@ public class OrdersActivity extends AppCompatActivity {
     private FirebaseUser currentUser;
 
     private BottomNavigationView bottomNavigation;
-    private ImageView ivCartIcon;
+    // REMOVED: private ImageView ivCartIcon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_order);
 
+        // Initialize views
         recyclerOrders = findViewById(R.id.recyclerOrders);
         progressBar = findViewById(R.id.progressBar);
         emptyLayout = findViewById(R.id.emptyLayout);
         txtEmptyMessage = findViewById(R.id.txtEmptyMessage);
-
         bottomNavigation = findViewById(R.id.bottomNavigation);
 
+        // REMOVED: ivCartIcon initialization
 
+        // Setup RecyclerView
         recyclerOrders.setLayoutManager(new LinearLayoutManager(this));
         orderList = new ArrayList<>();
         ordersAdapter = new OrdersAdapter(this, orderList);
         recyclerOrders.setAdapter(ordersAdapter);
 
+        // Firebase
         auth = FirebaseAuth.getInstance();
         currentUser = auth.getCurrentUser();
 
@@ -65,12 +68,12 @@ public class OrdersActivity extends AppCompatActivity {
 
         ordersRef = FirebaseDatabase.getInstance().getReference("orders");
 
+        // Load orders and setup navigation
         loadUserOrders();
         setupNavigation();
     }
 
     private void setupNavigation() {
-
         bottomNavigation.setSelectedItemId(R.id.nav_orders);
 
         bottomNavigation.setOnItemSelectedListener(item -> {
@@ -90,11 +93,8 @@ public class OrdersActivity extends AppCompatActivity {
             return false;
         });
 
-        ivCartIcon.setOnClickListener(v ->
-                startActivity(new Intent(OrdersActivity.this, CartActivity.class))
-        );
+        // REMOVED: ivCartIcon click listener
     }
-
 
     private void loadUserOrders() {
         progressBar.setVisibility(View.VISIBLE);

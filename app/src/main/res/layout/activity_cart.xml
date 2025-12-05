@@ -30,14 +30,10 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:divider="@android:color/transparent"
-            android:dividerHeight="8dp"
+            android:divider="#CCCCCC"
+            android:dividerHeight="1dp"
             android:padding="4dp"
-            android:background="@color/background_light"
-            android:scrollHorizontally="false"
-            android:ellipsize="none"
-            android:stackFromBottom="false"/>
-
+            android:background="@color/background_card"/>
 
         <Button
             android:id="@+id/btnProceedCheckout"
