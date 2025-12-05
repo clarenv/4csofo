@@ -1,6 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">4CSOFO</string>
+
+    <!-- Food Categories Array for Spinner -->
+    <string-array name="food_categories_array">
+        <item>Main Dish</item>
+        <item>Drinks</item>
+        <item>Dessert</item>
+        <item>Snacks</item>
+        <item>Appetizers</item>
+        <item>Salads</item>
+        <item>Soups</item>
+        <item>Specials</item>
+    </string-array>
 
     <!-- Order Status Array for Spinner in Each Order Item -->
     <string-array name="order_status_array">

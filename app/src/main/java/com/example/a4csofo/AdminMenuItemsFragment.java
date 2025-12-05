@@ -1,6 +1,5 @@
 package com.example.a4csofo;
 
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,12 +9,21 @@ import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -30,12 +38,14 @@ public class AdminMenuItemsFragment extends Fragment {
 
     private static final int PICK_IMAGE_REQUEST = 100;
 
-    private EditText etName, etPrice, etPrepTime, etDescription, etDiscountPrice,
+    private TextInputEditText etName, etPrice, etPrepTime, etDescription, etDiscountPrice,
             etAddOns, etIngredients, etServingSize, etCalories;
     private Spinner spCategory;
-    private Switch switchInStock;
-    private Button btnAddFood, btnPickImage;
+    private SwitchMaterial switchInStock;
+    private ExtendedFloatingActionButton fabAddFood;
+    private FloatingActionButton fabPickImage;
     private ImageView ivFoodPreview;
+    private LinearLayout placeholderLayout;
 
     private DatabaseReference foodsRef;
     private String base64Image = null;
@@ -60,24 +70,38 @@ public class AdminMenuItemsFragment extends Fragment {
         etCalories = view.findViewById(R.id.etCalories);
         switchInStock = view.findViewById(R.id.switchInStock);
         spCategory = view.findViewById(R.id.spCategory);
-        btnAddFood = view.findViewById(R.id.btnAddFood);
-        btnPickImage = view.findViewById(R.id.btnPickImage);
+        fabAddFood = view.findViewById(R.id.fabAddFood);
+        fabPickImage = view.findViewById(R.id.fabPickImage);
         ivFoodPreview = view.findViewById(R.id.ivFoodPreview);
+        placeholderLayout = view.findViewById(R.id.placeholderLayout);
 
         foodsRef = FirebaseDatabase.getInstance().getReference("foods");
 
-        // Spinner setup
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
+        // Category Spinner setup
+        String[] categories = new String[]{
+                "Main Dish",
+                "Drinks",
+                "Dessert",
+                "Snacks",
+        };
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                getContext(),
                 android.R.layout.simple_spinner_item,
-                new String[]{"Main Dish", "Drinks", "Dessert", "Snacks"});
+                categories
+        );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spCategory.setAdapter(adapter);
 
+        // Set default selection (first item)
+        spCategory.setSelection(0);
+
         // Pick image listener
-        btnPickImage.setOnClickListener(v -> openImagePicker());
+        fabPickImage.setOnClickListener(v -> openImagePicker());
+        placeholderLayout.setOnClickListener(v -> openImagePicker());
 
         // Add food listener
-        btnAddFood.setOnClickListener(v -> addFoodItem());
+        fabAddFood.setOnClickListener(v -> addFoodItem());
 
         return view;
     }
@@ -96,15 +120,23 @@ public class AdminMenuItemsFragment extends Fragment {
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
             try {
                 Uri imageUri = data.getData();
+                if (getActivity() == null) return;
+
                 InputStream inputStream = getActivity().getContentResolver().openInputStream(imageUri);
                 Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                ivFoodPreview.setImageBitmap(bitmap);
+                if (bitmap == null) return;
 
-                // Convert to Base64
+                // Resize/Compress for Firebase
+                Bitmap compressed = Bitmap.createScaledBitmap(bitmap, 800, 800, true);
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+                compressed.compress(Bitmap.CompressFormat.JPEG, 70, baos);
                 byte[] bytes = baos.toByteArray();
                 base64Image = Base64.encodeToString(bytes, Base64.DEFAULT);
+
+                ivFoodPreview.setImageBitmap(compressed);
+                placeholderLayout.setVisibility(View.GONE);
+
+                Toast.makeText(getContext(), "Image selected successfully", Toast.LENGTH_SHORT).show();
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -114,7 +146,6 @@ public class AdminMenuItemsFragment extends Fragment {
     }
 
     private void addFoodItem() {
-        // Get field values
         String name = etName.getText().toString().trim();
         String priceStr = etPrice.getText().toString().trim();
         String prepTime = etPrepTime.getText().toString().trim();
@@ -124,12 +155,27 @@ public class AdminMenuItemsFragment extends Fragment {
         String ingredientsStr = etIngredients.getText().toString().trim();
         String servingSize = etServingSize.getText().toString().trim();
         String caloriesStr = etCalories.getText().toString().trim();
-        String category = spCategory.getSelectedItem() != null ? spCategory.getSelectedItem().toString() : "";
+        String category = spCategory.getSelectedItem().toString();
         boolean inStock = switchInStock.isChecked();
 
         // Validate required fields
-        if (name.isEmpty() || priceStr.isEmpty() || prepTime.isEmpty()) {
-            Toast.makeText(getContext(), "Fill required fields", Toast.LENGTH_SHORT).show();
+        if (name.isEmpty()) {
+            showError(etName, "Food name is required");
+            return;
+        }
+
+        if (priceStr.isEmpty()) {
+            showError(etPrice, "Price is required");
+            return;
+        }
+
+        if (prepTime.isEmpty()) {
+            showError(etPrepTime, "Preparation time is required");
+            return;
+        }
+
+        if (base64Image == null) {
+            Toast.makeText(getContext(), "Please select an image", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -137,15 +183,33 @@ public class AdminMenuItemsFragment extends Fragment {
         int calories = 0;
         try {
             price = Double.parseDouble(priceStr);
-            if (!discountStr.isEmpty()) discountPrice = Double.parseDouble(discountStr);
-            if (!caloriesStr.isEmpty()) calories = Integer.parseInt(caloriesStr);
+            if (price <= 0) {
+                showError(etPrice, "Price must be greater than 0");
+                return;
+            }
+
+            if (!discountStr.isEmpty()) {
+                discountPrice = Double.parseDouble(discountStr);
+                if (discountPrice >= price) {
+                    showError(etDiscountPrice, "Discount price must be less than regular price");
+                    return;
+                }
+            }
+
+            if (!caloriesStr.isEmpty()) {
+                calories = Integer.parseInt(caloriesStr);
+                if (calories < 0) {
+                    showError(etCalories, "Calories cannot be negative");
+                    return;
+                }
+            }
         } catch (NumberFormatException e) {
-            Toast.makeText(getContext(), "Invalid number format", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Please enter valid numbers", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        List<String> addOns = addOnsStr.isEmpty() ? null : Arrays.asList(addOnsStr.split(","));
-        List<String> ingredients = ingredientsStr.isEmpty() ? null : Arrays.asList(ingredientsStr.split(","));
+        List<String> addOns = addOnsStr.isEmpty() ? null : Arrays.asList(addOnsStr.split("\\s*,\\s*"));
+        List<String> ingredients = ingredientsStr.isEmpty() ? null : Arrays.asList(ingredientsStr.split("\\s*,\\s*"));
 
         String key = foodsRef.push().getKey();
         if (key == null) {
@@ -153,17 +217,46 @@ public class AdminMenuItemsFragment extends Fragment {
             return;
         }
 
-        // Create FoodItem object
-        FoodItem food = new FoodItem(key, name, price, discountPrice, prepTime,
-                description, category, base64Image, addOns, ingredients, servingSize, calories, inStock);
+        // Show loading state
+        fabAddFood.setEnabled(false);
+        fabAddFood.setText("Adding...");
 
-        // Save to Firebase
+        // Create FoodItem without getBitmap() method
+        FoodItem food = new FoodItem();
+        food.id = key;
+        food.name = name;
+        food.price = price;
+        food.discountPrice = discountPrice;
+        food.prepTime = prepTime;
+        food.description = description;
+        food.category = category;
+        food.base64Image = base64Image;
+        food.addOns = addOns;
+        food.ingredients = ingredients;
+        food.servingSize = servingSize.isEmpty() ? null : servingSize;
+        food.calories = calories;
+        food.inStock = inStock;
+
         foodsRef.child(key).setValue(food)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(getContext(), "Food added successfully!", Toast.LENGTH_SHORT).show();
                     clearFields();
+                    fabAddFood.setEnabled(true);
+                    fabAddFood.setText("Add Food Item");
                 })
-                .addOnFailureListener(e -> Toast.makeText(getContext(), "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Failed to add food: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    fabAddFood.setEnabled(true);
+                    fabAddFood.setText("Add Food Item");
+                });
+    }
+
+    private void showError(TextInputEditText field, String message) {
+        if (field.getParent().getParent() instanceof TextInputLayout) {
+            TextInputLayout layout = (TextInputLayout) field.getParent().getParent();
+            layout.setError(message);
+            field.requestFocus();
+        }
     }
 
     private void clearFields() {
@@ -176,12 +269,27 @@ public class AdminMenuItemsFragment extends Fragment {
         etIngredients.setText("");
         etServingSize.setText("");
         etCalories.setText("");
+        spCategory.setSelection(0);
         switchInStock.setChecked(true);
         base64Image = null;
         ivFoodPreview.setImageResource(android.R.color.transparent);
+        placeholderLayout.setVisibility(View.VISIBLE);
+
+        // Clear errors
+        clearError(etName);
+        clearError(etPrice);
+        clearError(etPrepTime);
     }
 
-    // Full FoodItem model
+    private void clearError(TextInputEditText field) {
+        if (field.getParent().getParent() instanceof TextInputLayout) {
+            TextInputLayout layout = (TextInputLayout) field.getParent().getParent();
+            layout.setError(null);
+            layout.setErrorEnabled(false);
+        }
+    }
+
+    // Simplified FoodItem Model without getBitmap() method
     public static class FoodItem {
         public String id;
         public String name;
@@ -191,18 +299,20 @@ public class AdminMenuItemsFragment extends Fragment {
         public String description;
         public String category;
         public String base64Image;
-        public List<String> addOns;
-        public List<String> ingredients;
-        public String servingSize;
-        public int calories;
+        public List<String> addOns;       // optional
+        public List<String> ingredients;  // optional
+        public String servingSize;        // optional
+        public int calories;              // optional, 0 = not set
         public boolean inStock = true;
 
+        // Required empty constructor for Firebase
         public FoodItem() {}
 
+        // Optional: You can keep this constructor or remove it
         public FoodItem(String id, String name, double price, double discountPrice, String prepTime,
                         String description, String category, String base64Image,
-                        List<String> addOns, List<String> ingredients, String servingSize, int calories,
-                        boolean inStock) {
+                        List<String> addOns, List<String> ingredients, String servingSize,
+                        int calories, boolean inStock) {
             this.id = id;
             this.name = name;
             this.price = price;
@@ -216,12 +326,6 @@ public class AdminMenuItemsFragment extends Fragment {
             this.servingSize = servingSize;
             this.calories = calories;
             this.inStock = inStock;
-        }
-
-        public Bitmap getBitmap() {
-            if (base64Image == null || base64Image.isEmpty()) return null;
-            byte[] decodedBytes = Base64.decode(base64Image, Base64.DEFAULT);
-            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
         }
     }
 }

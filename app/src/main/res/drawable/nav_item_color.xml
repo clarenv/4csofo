@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Selected = #10A048 -->
+    <item android:color="@color/primary" android:state_checked="true" />
+    <!-- Unselected = #212020 -->
+    <item android:color="@color/text_secondary" android:state_checked="false" />
+    <!-- Disabled = Lighter Gray -->
+    <item android:color="#A0A0A0" android:state_enabled="false" />
+</selector>

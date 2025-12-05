@@ -4,85 +4,126 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    android:elevation="4dp"
-    app:cardCornerRadius="8dp">
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <!-- Name -->
-        <TextView
-            android:id="@+id/txtName"
-            android:layout_width="0dp"
+        <!-- Header with name and actions -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- User Info -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_toStartOf="@+id/actionButtons"
+                android:layout_toLeftOf="@+id/actionButtons"
+                android:layout_marginEnd="8dp"
+                android:layout_marginRight="8dp">
+
+                <TextView
+                    android:id="@+id/txtName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="John Doe"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"/>
+
+                <TextView
+                    android:id="@+id/txtEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="john@email.com"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginTop="2dp"/>
+
+            </LinearLayout>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:id="@+id/actionButtons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentRight="true">
+
+                <ImageView
+                    android:id="@+id/btnViewProfile"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_visibility"
+                    android:contentDescription="View Profile"
+                    android:padding="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
+
+                <ImageView
+                    android:id="@+id/btnDelete"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_delete"
+                    android:contentDescription="Delete"
+                    android:padding="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginLeft="4dp"/>
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+        <!-- Role and Status Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:textColor="#000"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
 
-        <!-- Email -->
-        <TextView
-            android:id="@+id/txtEmail"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="#555"
-            app:layout_constraintStart_toStartOf="@id/txtName"
-            app:layout_constraintTop_toBottomOf="@id/txtName"
-            app:layout_constraintEnd_toEndOf="@id/txtName"/>
+            <TextView
+                android:id="@+id/txtRole"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Customer"
+                android:textSize="14sp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/bg_role_customer"
+                android:textColor="@color/text_white"/>
 
-        <!-- Role -->
-        <TextView
-            android:id="@+id/txtRole"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="#2196F3"
-            app:layout_constraintStart_toStartOf="@id/txtEmail"
-            app:layout_constraintTop_toBottomOf="@id/txtEmail"/>
+            <TextView
+                android:id="@+id/tvUserStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="User"
+                android:textSize="14sp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:background="@drawable/bg_status_user"
+                android:textColor="@color/text_white"
+                android:layout_marginStart="8dp"
+                android:layout_marginLeft="8dp"/>
 
-        <!-- Online/Offline Status -->
+        </LinearLayout>
+
+        <!-- Online Status -->
         <TextView
             android:id="@+id/tvOnlineStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Offline"
-            android:textSize="14sp"
-            android:textColor="#F44336"
-            app:layout_constraintStart_toEndOf="@id/txtRole"
-            app:layout_constraintBaseline_toBaselineOf="@id/txtRole"
-            android:layout_marginStart="12dp"/>
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="8dp"/>
 
-        <!-- Horizontal actions: Delete & View Profile -->
-        <LinearLayout
-            android:id="@+id/actionContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end"
-            android:layout_marginTop="12dp"
-            app:layout_constraintTop_toBottomOf="@id/txtRole"
-            app:layout_constraintEnd_toEndOf="parent">
+    </LinearLayout>
 
-            <ImageView
-                android:id="@+id/btnDelete"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:contentDescription="Delete user"
-                android:src="@android:drawable/ic_menu_delete"
-                android:layout_marginEnd="8dp"/>
-
-            <ImageView
-                android:id="@+id/btnViewProfile"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:contentDescription="View profile"
-                android:src="@android:drawable/ic_menu_info_details"/>
-        </LinearLayout>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>

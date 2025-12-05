@@ -15,7 +15,20 @@ public class OrderModel {
     private String payment_method;
     private String status;
     private String transaction_number;
-    private String gcashProof;        // <-- Added for GCash proof of payment
+    private String gcashProof;        // GCash proof of payment
+
+    // Additional fields to match Firebase keys
+    private String paymentText;
+    private String gcashProofDownloadUrl;
+    private String formattedTotal;
+    private String pickupBranch;
+    private String orderType;
+    private String deliveryLocation;
+    private Double deliveryLat;
+    private Double deliveryLng;
+    private String pickupTime;
+    private String gcashReferenceNumber;
+    private String itemsAsString;
 
     // Default constructor required for Firebase
     public OrderModel() {}
@@ -41,7 +54,44 @@ public class OrderModel {
     public String getPayment_method() { return payment_method; }
     public String getStatus() { return status; }
     public String getTransaction_number() { return transaction_number; }
-    public String getGcashProof() { return gcashProof; }  // <-- new getter
+    public String getGcashProof() { return gcashProof; }
+
+    // Additional Firebase fields
+    public String getPaymentText() { return paymentText; }
+    public void setPaymentText(String paymentText) { this.paymentText = paymentText; }
+
+    public String getGcashProofDownloadUrl() { return gcashProofDownloadUrl; }
+    public void setGcashProofDownloadUrl(String gcashProofDownloadUrl) { this.gcashProofDownloadUrl = gcashProofDownloadUrl; }
+
+    public String getFormattedTotal() { return formattedTotal; }
+    public void setFormattedTotal(String formattedTotal) { this.formattedTotal = formattedTotal; }
+
+    public String getPickupBranch() { return pickupBranch; }
+    public void setPickupBranch(String pickupBranch) { this.pickupBranch = pickupBranch; }
+
+    public String getOrderType() { return orderType; }
+    public void setOrderType(String orderType) { this.orderType = orderType; }
+
+    public String getDeliveryLocation() { return deliveryLocation; }
+    public void setDeliveryLocation(String deliveryLocation) { this.deliveryLocation = deliveryLocation; }
+
+    public Double getDeliveryLat() { return deliveryLat; }
+    public void setDeliveryLat(Double deliveryLat) { this.deliveryLat = deliveryLat; }
+
+    public Double getDeliveryLng() { return deliveryLng; }
+    public void setDeliveryLng(Double deliveryLng) { this.deliveryLng = deliveryLng; }
+
+    public String getPickupTime() { return pickupTime; }
+    public void setPickupTime(String pickupTime) { this.pickupTime = pickupTime; }
+
+    public String getGcashReferenceNumber() { return gcashReferenceNumber; }
+    public void setGcashReferenceNumber(String gcashReferenceNumber) { this.gcashReferenceNumber = gcashReferenceNumber; }
+
+    public String getItemsAsString() {
+        if (items == null || items.isEmpty()) return "No items";
+        return String.join(", ", items);
+    }
+    public void setItemsAsString(String itemsAsString) { this.itemsAsString = itemsAsString; }
 
     // Adapter-friendly getters
     public String getCustomer_name() { return getCustomerName(); } // Legacy
@@ -57,26 +107,20 @@ public class OrderModel {
     public void setPayment_method(String payment_method) { this.payment_method = payment_method; }
     public void setStatus(String status) { this.status = status; }
     public void setTransaction_number(String transaction_number) { this.transaction_number = transaction_number; }
-    public void setGcashProof(String gcashProof) { this.gcashProof = gcashProof; } // <-- new setter
+    public void setGcashProof(String gcashProof) { this.gcashProof = gcashProof; }
 
-    // Adapter-friendly setters (new)
+    // Adapter-friendly setters (legacy)
     public void setCustomer_name(String customerName) { this.customer_name = customerName; }
     public void setTotal(String total) { /* no-op, keep for Adapter compatibility */ }
     public void setPaymentMethod(String paymentMethod) { this.payment_method = paymentMethod; }
 
-    // Helper method: return items as comma-separated string
-    public String getItemsAsString() {
-        if (items == null || items.isEmpty()) return "No items";
-        return String.join(", ", items);
-    }
-
     // Helper method: formatted total price
-    public String getFormattedTotal() {
+    public String getFormattedTotalPrice() {
         return "₱" + String.format("%.2f", total_price);
     }
 
     // Helper method: formatted payment text
-    public String getPaymentText() {
+    public String getFormattedPaymentText() {
         return "Payment: " + (payment_method != null ? payment_method : "N/A");
     }
 

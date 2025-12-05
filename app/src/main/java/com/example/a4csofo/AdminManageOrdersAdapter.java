@@ -21,6 +21,14 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
     private final ArrayList<OrderModel> orderList;
     private final AdminOrdersFragment fragment;
 
+    private static final ArrayList<String> STATUS_FLOW = new ArrayList<String>() {{
+        add("Pending");
+        add("Preparing");
+        add("Delivering");
+        add("Delivered");
+    }};
+    private static final String STATUS_CANCELLED = "Cancelled";
+
     public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList, AdminOrdersFragment fragment) {
         this.context = context;
         this.orderList = orderList;
@@ -44,36 +52,40 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
         holder.tvPayment.setText("Payment: " + order.getPaymentMethod());
         holder.tvStatus.setText("Status: " + order.getStatus());
 
-        // Setup spinner
-        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(
-                context,
-                R.array.order_status_array,
-                android.R.layout.simple_spinner_item
-        );
+        // Generate spinner options for this order
+        ArrayList<String> spinnerOptions = getNextStatusOptions(order.getStatus());
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(context,
+                android.R.layout.simple_spinner_item, spinnerOptions);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         holder.spinnerStatus.setAdapter(spinnerAdapter);
 
-        // Set spinner to current status
-        int spinnerPosition = spinnerAdapter.getPosition(order.getStatus());
-        holder.spinnerStatus.setSelection(spinnerPosition);
+        // Set spinner selection to first option by default
+        holder.spinnerStatus.setSelection(0);
 
-        // Update button logic
         holder.btnUpdateStatus.setOnClickListener(v -> {
-            String selectedStatus = holder.spinnerStatus.getSelectedItem().toString();
+            Object selectedItem = holder.spinnerStatus.getSelectedItem();
+            if (selectedItem == null) {
+                Toast.makeText(context, "Please select a status", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            if (order.getOrderKey() != null && !selectedStatus.equals(order.getStatus())) {
-                order.setStatus(selectedStatus); // local update
-                fragment.updateOrderStatus(order, selectedStatus); // Firebase update
-                holder.tvStatus.setText("Status: " + selectedStatus);
-                Toast.makeText(context, "Order status updated to " + selectedStatus, Toast.LENGTH_SHORT).show();
+            String selectedStatus = selectedItem.toString();
+
+            // Prevent updating if already Delivered or Cancelled
+            if ("Delivered".equals(order.getStatus()) || "Cancelled".equals(order.getStatus())) {
+                Toast.makeText(context, "Order is already " + order.getStatus(), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!selectedStatus.equals(order.getStatus())) {
+                // Update via fragment method; UI will refresh after Firebase success
+                fragment.updateOrderStatus(order, selectedStatus);
             } else {
                 Toast.makeText(context, "No changes to update", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // Optional: item click to open details page
         holder.itemView.setOnClickListener(v -> {
-            // TODO: Open OrderDetailsFragment or Activity
             Toast.makeText(context, "Click to view order details", Toast.LENGTH_SHORT).show();
         });
     }
@@ -84,7 +96,6 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
-
         TextView tvOrderId, tvCustomer, tvTotalPrice, tvPayment, tvStatus;
         Spinner spinnerStatus;
         Button btnUpdateStatus;
@@ -99,5 +110,32 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
             spinnerStatus = itemView.findViewById(R.id.spinnerStatus);
             btnUpdateStatus = itemView.findViewById(R.id.btnUpdateStatus);
         }
+    }
+
+    /**
+     * Generate next valid status options for the spinner.
+     * Shows all remaining forward statuses + Cancel option.
+     * Delivered/Cancelled orders show only the current status.
+     */
+    private ArrayList<String> getNextStatusOptions(String currentStatus) {
+        ArrayList<String> options = new ArrayList<>();
+
+        if ("Delivered".equalsIgnoreCase(currentStatus) || "Cancelled".equalsIgnoreCase(currentStatus)) {
+            options.add(currentStatus);
+            return options;
+        }
+
+        int currentIndex = STATUS_FLOW.indexOf(currentStatus);
+        if (currentIndex == -1) currentIndex = 0;
+
+        // Add all remaining statuses forward
+        for (int i = currentIndex + 1; i < STATUS_FLOW.size(); i++) {
+            options.add(STATUS_FLOW.get(i));
+        }
+
+        // Add Cancel option
+        options.add(STATUS_CANCELLED);
+
+        return options;
     }
 }

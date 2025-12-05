@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,15 +20,17 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.database.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class AdminCategoriesFragment extends Fragment {
 
     private RecyclerView recyclerViewFoods;
     private DatabaseReference foodsRef;
     private List<ItemAdminCategory> foodList = new ArrayList<>();
+    private List<ItemAdminCategory> filteredList = new ArrayList<>();
     private FoodAdapter foodAdapter;
+    private Spinner spinnerCategories;
+    private TextView tvEmptyState;
 
     @SuppressLint("MissingInflatedId")
     @Nullable
@@ -39,13 +42,29 @@ public class AdminCategoriesFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_admin_categories, container, false);
 
         recyclerViewFoods = view.findViewById(R.id.recyclerViewFoods);
+        spinnerCategories = view.findViewById(R.id.spinnerCategories);
+        tvEmptyState = view.findViewById(R.id.tvEmptyState);
+
         recyclerViewFoods.setLayoutManager(new LinearLayoutManager(getContext()));
-        foodAdapter = new FoodAdapter(foodList);
+        foodAdapter = new FoodAdapter(filteredList);
         recyclerViewFoods.setAdapter(foodAdapter);
 
         foodsRef = FirebaseDatabase.getInstance().getReference("foods");
+        loadFoods();
 
-        loadFoods(); // Load all foods from Firebase
+        // Set spinner listener
+        spinnerCategories.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedCategory = parent.getItemAtPosition(position).toString();
+                filterFoodsByCategory(selectedCategory);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                filterFoodsByCategory("All");
+            }
+        });
 
         return view;
     }
@@ -55,25 +74,77 @@ public class AdminCategoriesFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 foodList.clear();
+
+                // Collect unique categories for spinner
+                Set<String> categoriesSet = new HashSet<>();
+                categoriesSet.add("All");
+
                 for (DataSnapshot item : snapshot.getChildren()) {
                     ItemAdminCategory food = item.getValue(ItemAdminCategory.class);
                     if (food != null) {
                         food.setKey(item.getKey());
                         foodList.add(food);
+
+                        // Add category to set
+                        if (food.getCategory() != null && !food.getCategory().isEmpty()) {
+                            categoriesSet.add(food.getCategory());
+                        }
                     }
                 }
-                foodAdapter.notifyDataSetChanged();
 
-                if (foodList.isEmpty()) {
-                    Toast.makeText(getContext(), "No foods found.", Toast.LENGTH_SHORT).show();
+                // Update spinner with categories
+                List<String> categoriesList = new ArrayList<>(categoriesSet);
+                Collections.sort(categoriesList);
+
+                ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
+                        getContext(),
+                        android.R.layout.simple_spinner_item,
+                        categoriesList
+                );
+                spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerCategories.setAdapter(spinnerAdapter);
+
+                // Initial filter
+                filterFoodsByCategory("All");
+
+                // Show/hide empty state
+                if (filteredList.isEmpty()) {
+                    tvEmptyState.setVisibility(View.VISIBLE);
+                } else {
+                    tvEmptyState.setVisibility(View.GONE);
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Failed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Failed to load foods: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void filterFoodsByCategory(String category) {
+        filteredList.clear();
+
+        if (category.equals("All")) {
+            filteredList.addAll(foodList);
+        } else {
+            for (ItemAdminCategory food : foodList) {
+                if (food.getCategory() != null && food.getCategory().equals(category)) {
+                    filteredList.add(food);
+                }
+            }
+        }
+
+        foodAdapter.notifyDataSetChanged();
+
+        // Update empty state
+        if (filteredList.isEmpty()) {
+            tvEmptyState.setText(category.equals("All") ?
+                    "No food items found" : "No items in " + category + " category");
+            tvEmptyState.setVisibility(View.VISIBLE);
+        } else {
+            tvEmptyState.setVisibility(View.GONE);
+        }
     }
 
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
@@ -102,7 +173,6 @@ public class AdminCategoriesFragment extends Fragment {
             holder.tvPrepTime.setText(food.getPrepTime() + " mins");
             holder.tvDesc.setText(food.getDescription());
 
-            // Extras: Add-ons, Ingredients, Serving Size, Calories
             String extrasText = "";
             if (food.getAddOns() != null) extrasText += "Add-ons: " + String.join(", ", food.getAddOns()) + "\n";
             if (food.getIngredients() != null) extrasText += "Ingredients: " + String.join(", ", food.getIngredients()) + "\n";
@@ -120,30 +190,35 @@ public class AdminCategoriesFragment extends Fragment {
             holder.switchAvailable.setChecked(food.isAvailable());
             holder.switchAvailable.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 food.setAvailable(isChecked);
-                foodsRef.child(food.getKey()).child("available").setValue(isChecked);
+                foodsRef.child(food.getKey()).child("available").setValue(isChecked)
+                        .addOnSuccessListener(aVoid -> {
+                            Toast.makeText(getContext(), "Availability updated", Toast.LENGTH_SHORT).show();
+                        });
             });
 
+            // Update button click - Shows update dialog
             holder.btnUpdate.setOnClickListener(v -> showAdminUpdateFoodDialog(food, position));
 
+            // Delete button click
             holder.btnDelete.setOnClickListener(v -> {
                 new AlertDialog.Builder(getContext())
                         .setTitle("Delete Food")
                         .setMessage("Are you sure you want to delete " + food.getName() + "?")
                         .setPositiveButton("Yes", (dialog, which) ->
                                 foodsRef.child(food.getKey()).removeValue()
-                                        .addOnSuccessListener(aVoid ->
-                                                Toast.makeText(getContext(), "Deleted " + food.getName(), Toast.LENGTH_SHORT).show())
-                                        .addOnFailureListener(e ->
-                                                Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
+                                        .addOnSuccessListener(aVoid -> {
+                                            Toast.makeText(getContext(), food.getName() + " deleted", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .addOnFailureListener(e -> {
+                                            Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                        }))
                         .setNegativeButton("No", null)
                         .show();
             });
         }
 
         @Override
-        public int getItemCount() {
-            return foods.size();
-        }
+        public int getItemCount() { return foods.size(); }
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
             ImageView ivFoodImage;
@@ -159,7 +234,7 @@ public class AdminCategoriesFragment extends Fragment {
                 tvDesc = itemView.findViewById(R.id.tvFoodDesc);
                 tvCategory = itemView.findViewById(R.id.tvFoodCategory);
                 tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
-                tvExtras = itemView.findViewById(R.id.tvFoodExtras); // Added extras
+                tvExtras = itemView.findViewById(R.id.tvFoodExtras);
                 btnUpdate = itemView.findViewById(R.id.btnUpdate);
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 switchAvailable = itemView.findViewById(R.id.switchAvailable);
@@ -169,64 +244,153 @@ public class AdminCategoriesFragment extends Fragment {
 
     private void showAdminUpdateFoodDialog(ItemAdminCategory food, int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Admin: Update Food");
+        builder.setTitle("Update " + food.getName());
 
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_admin_update_food, null);
+        // Inflate the update dialog layout
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_admin_update_food, null);
         builder.setView(dialogView);
 
-        ImageView ivFood = dialogView.findViewById(R.id.ivAdminFoodImage);
-        EditText etName = dialogView.findViewById(R.id.etAdminFoodName);
-        EditText etPrice = dialogView.findViewById(R.id.etAdminFoodPrice);
-        EditText etPrepTime = dialogView.findViewById(R.id.etAdminFoodPrepTime);
-        EditText etDesc = dialogView.findViewById(R.id.etAdminFoodDesc);
-        Spinner spCategory = dialogView.findViewById(R.id.spAdminFoodCategory);
+        // Initialize all form fields
+        EditText etName = dialogView.findViewById(R.id.etName);
+        EditText etPrice = dialogView.findViewById(R.id.etPrice);
+        EditText etDescription = dialogView.findViewById(R.id.etDescription);
+        EditText etPrepTime = dialogView.findViewById(R.id.etPrepTime);
+        Spinner spCategory = dialogView.findViewById(R.id.spCategory);
+        EditText etAddOns = dialogView.findViewById(R.id.etAddOns);
+        EditText etIngredients = dialogView.findViewById(R.id.etIngredients);
+        EditText etServingSize = dialogView.findViewById(R.id.etServingSize);
+        EditText etCalories = dialogView.findViewById(R.id.etCalories);
+        Switch switchAvailable = dialogView.findViewById(R.id.switchAvailable);
 
-        etName.setText(food.getName());
+        // Set current values
+        etName.setText(food.getName() != null ? food.getName() : "");
         etPrice.setText(String.valueOf(food.getPrice()));
-        etPrepTime.setText(food.getPrepTime());
-        etDesc.setText(food.getDescription());
+        etDescription.setText(food.getDescription() != null ? food.getDescription() : "");
+        etPrepTime.setText(food.getPrepTime() != null ? food.getPrepTime() : "");
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
+        // Set up category spinner with available categories
+        List<String> categories = new ArrayList<>();
+        categories.add("Main Dish");
+        categories.add("Drinks");
+        categories.add("Dessert");
+        categories.add("Snacks");
+        categories.add("Appetizer");
+
+        ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(
+                getContext(),
                 android.R.layout.simple_spinner_item,
-                new String[]{"Main Dish", "Drinks", "Dessert", "Snacks"});
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spCategory.setAdapter(adapter);
+                categories
+        );
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spCategory.setAdapter(categoryAdapter);
+
+        // Set selected category
         if (food.getCategory() != null) {
-            int pos = adapter.getPosition(food.getCategory());
-            if (pos >= 0) spCategory.setSelection(pos);
+            for (int i = 0; i < categories.size(); i++) {
+                if (categories.get(i).equals(food.getCategory())) {
+                    spCategory.setSelection(i);
+                    break;
+                }
+            }
         }
 
-        if (food.getImageBase64() != null && !food.getImageBase64().isEmpty()) {
-            Bitmap bmp = base64ToBitmap(food.getImageBase64());
-            if (bmp != null) ivFood.setImageBitmap(bmp);
+        // Set other fields
+        if (food.getAddOns() != null && !food.getAddOns().isEmpty()) {
+            etAddOns.setText(String.join(", ", food.getAddOns()));
         }
 
+        if (food.getIngredients() != null && !food.getIngredients().isEmpty()) {
+            etIngredients.setText(String.join(", ", food.getIngredients()));
+        }
+
+        etServingSize.setText(food.getServingSize() != null ? food.getServingSize() : "");
+        etCalories.setText(String.valueOf(food.getCalories()));
+        switchAvailable.setChecked(food.isAvailable());
+
+        // Set up the Update button
         builder.setPositiveButton("Update", (dialog, which) -> {
-            new AlertDialog.Builder(getContext())
-                    .setTitle("Confirm Admin Update")
-                    .setMessage("Are you sure you want to update " + food.getName() + "?")
-                    .setPositiveButton("Yes", (d, w) -> {
-                        food.setName(etName.getText().toString().trim());
-                        food.setPrice(Double.parseDouble(etPrice.getText().toString().trim()));
-                        food.setPrepTime(etPrepTime.getText().toString().trim());
-                        food.setDescription(etDesc.getText().toString().trim());
-                        food.setCategory(spCategory.getSelectedItem().toString());
+            // Get updated values
+            String name = etName.getText().toString().trim();
+            String priceStr = etPrice.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
+            String prepTime = etPrepTime.getText().toString().trim();
+            String category = spCategory.getSelectedItem().toString();
+            String addOnsStr = etAddOns.getText().toString().trim();
+            String ingredientsStr = etIngredients.getText().toString().trim();
+            String servingSize = etServingSize.getText().toString().trim();
+            String caloriesStr = etCalories.getText().toString().trim();
+            boolean available = switchAvailable.isChecked();
 
-                        foodsRef.child(food.getKey()).setValue(food)
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(getContext(), "Updated successfully", Toast.LENGTH_SHORT).show();
-                                    // Immediately update RecyclerView
-                                    foodList.set(position, food);
-                                    foodAdapter.notifyItemChanged(position);
-                                })
-                                .addOnFailureListener(e -> Toast.makeText(getContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            // Validate inputs
+            if (name.isEmpty()) {
+                Toast.makeText(getContext(), "Please enter food name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (priceStr.isEmpty()) {
+                Toast.makeText(getContext(), "Please enter price", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            double price;
+            try {
+                price = Double.parseDouble(priceStr);
+            } catch (NumberFormatException e) {
+                Toast.makeText(getContext(), "Invalid price format", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int calories = 0;
+            if (!caloriesStr.isEmpty()) {
+                try {
+                    calories = Integer.parseInt(caloriesStr);
+                } catch (NumberFormatException e) {
+                    Toast.makeText(getContext(), "Invalid calories format", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            // Convert comma-separated strings to lists
+            List<String> addOns = null;
+            if (!addOnsStr.isEmpty()) {
+                addOns = Arrays.asList(addOnsStr.split("\\s*,\\s*"));
+            }
+
+            List<String> ingredients = null;
+            if (!ingredientsStr.isEmpty()) {
+                ingredients = Arrays.asList(ingredientsStr.split("\\s*,\\s*"));
+            }
+
+            // Update the food object
+            food.setName(name);
+            food.setPrice(price);
+            food.setDescription(description);
+            food.setPrepTime(prepTime);
+            food.setCategory(category);
+            food.setAddOns(addOns);
+            food.setIngredients(ingredients);
+            food.setServingSize(servingSize);
+            food.setCalories(calories);
+            food.setAvailable(available);
+
+            // Update in Firebase
+            foodsRef.child(food.getKey()).setValue(food)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getContext(), food.getName() + " updated successfully", Toast.LENGTH_SHORT).show();
+                        // Refresh the adapter
+                        foodAdapter.notifyItemChanged(position);
                     })
-                    .setNegativeButton("No", null)
-                    .show();
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(), "Failed to update: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
         });
 
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        // Set up the Cancel button
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        // Show the dialog
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     public static Bitmap base64ToBitmap(String base64Str) {
@@ -234,6 +398,7 @@ public class AdminCategoriesFragment extends Fragment {
             byte[] decoded = Base64.decode(base64Str, Base64.DEFAULT);
             return BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
         } catch (Exception e) {
+            Log.e("AdminCategories", "Error converting base64 to bitmap: " + e.getMessage());
             return null;
         }
     }
@@ -248,28 +413,40 @@ public class AdminCategoriesFragment extends Fragment {
 
         public ItemAdminCategory() {}
 
+        // Getters and setters
         public String getKey() { return key; }
         public void setKey(String key) { this.key = key; }
+
         public String getCategory() { return category; }
         public void setCategory(String category) { this.category = category; }
+
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+
         public String getPrepTime() { return prepTime; }
         public void setPrepTime(String prepTime) { this.prepTime = prepTime; }
+
         public double getPrice() { return price; }
         public void setPrice(double price) { this.price = price; }
+
         public String getImageBase64() { return imageBase64; }
         public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
+
         public boolean isAvailable() { return available; }
         public void setAvailable(boolean available) { this.available = available; }
+
         public List<String> getAddOns() { return addOns; }
         public void setAddOns(List<String> addOns) { this.addOns = addOns; }
+
         public List<String> getIngredients() { return ingredients; }
         public void setIngredients(List<String> ingredients) { this.ingredients = ingredients; }
+
         public String getServingSize() { return servingSize; }
         public void setServingSize(String servingSize) { this.servingSize = servingSize; }
+
         public int getCalories() { return calories; }
         public void setCalories(int calories) { this.calories = calories; }
     }

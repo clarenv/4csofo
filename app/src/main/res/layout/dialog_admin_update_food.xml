@@ -1,126 +1,205 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="8dp">
 
-        <!-- Food Image -->
-        <ImageView
-            android:id="@+id/ivAdminFoodImage"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_placeholder"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Name -->
+        <!-- Food Name -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Food Name:"/>
+            android:text="Food Name"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodName"
+            android:id="@+id/etName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Food name" />
-
-        <!-- Category -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Category:"/>
-        <Spinner
-            android:id="@+id/spAdminFoodCategory"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:hint="Enter food name"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
 
         <!-- Price -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Price:"/>
-        <EditText
-            android:id="@+id/etAdminFoodPrice"
+            android:text="Price (₱)"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="numberDecimal"
-            android:hint="Price" />
+            android:layout_height="wrap_content"/>
 
-        <!-- Preparation Time -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Preparation Time (mins):"/>
         <EditText
-            android:id="@+id/etAdminFoodPrepTime"
+            android:id="@+id/etPrice"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="number"
-            android:hint="Preparation time" />
+            android:hint="0.00"
+            android:inputType="numberDecimal"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
 
         <!-- Description -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Description:"/>
+            android:text="Description"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodDesc"
+            android:id="@+id/etDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Description"
-            android:inputType="textMultiLine"
-            android:minLines="3"/>
+            android:hint="Enter description"
+            android:maxLines="3"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Preparation Time -->
+        <TextView
+            android:text="Preparation Time (mins)"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/etPrepTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="e.g., 15"
+            android:inputType="number"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Category -->
+        <TextView
+            android:text="Category"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Spinner
+            android:id="@+id/spCategory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"/>
 
         <!-- Add-ons -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Add-ons (comma separated):"/>
+            android:text="Add-ons (comma separated)"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodAddOns"
+            android:id="@+id/etAddOns"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Add-ons" />
+            android:hint="Cheese, Bacon, etc."
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
 
         <!-- Ingredients -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Ingredients (comma separated):"/>
+            android:text="Ingredients (comma separated)"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodIngredients"
+            android:id="@+id/etIngredients"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Ingredients" />
+            android:hint="Flour, Eggs, Milk, etc."
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
 
         <!-- Serving Size -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Serving Size:"/>
+            android:text="Serving Size"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodServingSize"
+            android:id="@+id/etServingSize"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Serving Size" />
+            android:hint="e.g., 1 plate, 300g"
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
 
         <!-- Calories -->
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Calories:"/>
+            android:text="Calories"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <EditText
-            android:id="@+id/etAdminFoodCalories"
+            android:id="@+id/etCalories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:hint="0"
             android:inputType="number"
-            android:hint="Calories" />
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Available Switch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="16dp">
+
+            <TextView
+                android:text="Available"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+
+            <Switch
+                android:id="@+id/switchAvailable"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="24dp"/>
 
     </LinearLayout>
 </ScrollView>

@@ -6,49 +6,88 @@
     android:layout_height="match_parent"
     android:background="#F7F7F7">
 
-    <!-- Add Category -->
-    <EditText
-        android:id="@+id/etCategoryName"
-        android:hint="Enter category name"
-        android:layout_width="match_parent"
+    <!-- Category Selector -->
+    <TextView
+        android:text="Select Category"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginBottom="4dp"
+        android:textColor="#333333"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/btnAddCategory"
-        android:text="Add Category"
+    <Spinner
+        android:id="@+id/spinnerCategories"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
+        android:background="@drawable/spinner_background"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp"/>
 
-    <!-- Category List -->
-    <TextView
-        android:text="Categories"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:layout_marginTop="12dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <!-- NEW: RecyclerView for Admin Categories -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewCategories"
+    <!-- Foods Header -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:background="#FFFFFF"
-        android:layout_marginBottom="12dp" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
 
-    <!-- Foods List -->
-    <TextView
-        android:text="Foods"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        <TextView
+            android:text="Foods"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="#333333"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewFoods"
+        <!-- Optional: Add item count -->
+        <TextView
+            android:id="@+id/tvItemCount"
+            android:text="0 items"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+    <!-- Foods List Container -->
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:background="#FFFFFF"
+        android:padding="4dp">
+
+        <!-- Empty State -->
+        <TextView
+            android:id="@+id/tvEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="No food items found"
+            android:textSize="16sp"
+            android:textColor="#999999"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone"/>
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:visibility="gone"/>
+
+        <!-- Foods List -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewFoods"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="4dp"/>
+
+    </RelativeLayout>
 
 </LinearLayout>

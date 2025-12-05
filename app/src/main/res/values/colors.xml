@@ -1,23 +1,35 @@
 <resources>
 
-    <!-- Primary Brand Colors (from logo) -->
-    <color name="primary">#D55F39</color>          <!-- Red Bowl -->
-    <color name="primary_dark">#B44F30</color>     <!-- Darker Red -->
-    <color name="accent">#8FAE51</color>           <!-- Green Cart -->
-    <color name="accent_dark">#6A873C</color>      <!-- Dark Green -->
+    <!-- Primary Brand Colors -->
+    <color name="primary">#10A048</color>          <!-- Mint Drop (buttons/highlights) -->
+    <color name="primary_dark">#3FC66D</color>     <!-- Darker Mint Drop for pressed states -->
+    <color name="accent">#F3E2C7</color>           <!-- Cream for accents -->
+    <color name="accent_dark">#E6CFAC</color>      <!-- Darker Cream -->
 
     <!-- Background Colors -->
-    <color name="background_light">#E9E9E9</color> <!-- Light Gray BG -->
+    <color name="background_light">#FFF7E5</color> <!-- Light Cream background -->
     <color name="background_white">#FFFFFF</color> <!-- White -->
-    <color name="background_card">#FFF9E6</color>  <!-- Light Cream (from yellow/orange area) -->
+    <color name="background_card">#F4F4F4</color>  <!-- Cream card background -->
 
     <!-- Text Colors -->
-    <color name="text_white">#FFFFFF</color>       <!-- White Text -->
-    <color name="text_primary">#3A537D</color>     <!-- Deep Blue (matches “4C's” text) -->
-    <color name="text_secondary">#6A7A90</color>   <!-- Blue-gray -->
+    <color name="text_white">#FFFFFF</color>       <!-- White text -->
+    <color name="text_primary">#000000</color>     <!-- Mint Drop text (primary) -->
+    <color name="text_secondary">#212020</color>   <!-- Cream secondary text -->
 
     <!-- Extra Colors for Logo -->
-    <color name="white">#FFFFFF</color>            <!-- White, para sa bilog na logo background -->
-    <color name="logo_stroke">#D55F39</color>     <!-- Optional: border stroke ng bilog logo -->
+    <color name="white">#FFFFFF</color>
+    <color name="logo_stroke">#4ADE80</color>      <!-- Mint Drop stroke -->
 
+
+    <!-- Add these navigation-specific colors -->
+    <color name="nav_ripple">#2010A048</color> <!-- Primary with 12% opacity -->
+
+    <!-- Optional status colors -->
+    <color name="status_success">#10A048</color>
+    <color name="status_warning">#FF9800</color>
+    <color name="status_error">#F44336</color>
+
+    <!-- Background variations -->
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="surface_container">#F8F8F8</color>
 </resources>
