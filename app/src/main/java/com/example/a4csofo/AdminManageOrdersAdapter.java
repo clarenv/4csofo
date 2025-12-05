@@ -4,9 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,10 +17,12 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
 
     private final Context context;
     private final ArrayList<OrderModel> orderList;
+    private final AdminOrdersFragment fragment;
 
-    public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList) {
+    public AdminManageOrdersAdapter(Context context, ArrayList<OrderModel> orderList, AdminOrdersFragment fragment) {
         this.context = context;
         this.orderList = orderList;
+        this.fragment = fragment;
     }
 
     @NonNull
@@ -36,40 +36,29 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
     public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
         OrderModel order = orderList.get(position);
 
+        // Basic info
         holder.tvOrderId.setText(order.getOrderKey() != null ? "ORD-" + order.getOrderKey() : "ORD-N/A");
         holder.tvCustomer.setText(order.getCustomerName());
-
-        // Use getFormattedTotal() or getTotal() to fix error
         holder.tvTotalPrice.setText(order.getTotal());
+        holder.tvPayment.setText("Payment: " + order.getPayment_method());
 
-        // Use getPaymentMethod() or getPaymentText() to fix error
-        holder.tvPayment.setText("Payment: " + order.getPaymentMethod());
-
+        // Status and progress dots
         holder.tvStatus.setText("Status: " + order.getStatus());
+        holder.tvProgress.setText(getProgressDots(order));
 
-        // Setup spinner
-        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(
-                context,
-                R.array.order_status_array,
-                android.R.layout.simple_spinner_item
-        );
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        holder.spinnerStatus.setAdapter(spinnerAdapter);
-
-        // Set spinner to current status
-        int spinnerPosition = spinnerAdapter.getPosition(order.getStatus());
-        holder.spinnerStatus.setSelection(spinnerPosition);
-
-        // Update button logic
+        // Update button
         holder.btnUpdateStatus.setOnClickListener(v -> {
-            String selectedStatus = holder.spinnerStatus.getSelectedItem().toString();
+            String nextStatus = getNextStatus(order);
+            if (nextStatus != null) {
+                order.setStatus(nextStatus);
+                fragment.updateOrderStatus(order, nextStatus);
 
-            if (order.getOrderKey() != null && !selectedStatus.equals(order.getStatus())) {
-                order.updateStatus(selectedStatus); // update Firebase
-                holder.tvStatus.setText("Status: " + selectedStatus);
-                Toast.makeText(context, "Order status updated to " + selectedStatus, Toast.LENGTH_SHORT).show();
+                // Update UI
+                holder.tvStatus.setText("Status: " + nextStatus);
+                holder.tvProgress.setText(getProgressDots(order));
+                Toast.makeText(context, "Order updated to " + nextStatus, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(context, "No changes to update", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Order already completed", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -79,10 +68,51 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
         return orderList.size();
     }
 
-    static class OrderViewHolder extends RecyclerView.ViewHolder {
+    // Determine next status
+    private String getNextStatus(OrderModel order) {
+        String[] flow = getStatusFlow(order);
+        for (int i = 0; i < flow.length; i++) {
+            if (flow[i].equalsIgnoreCase(order.getStatus()) && i < flow.length - 1) {
+                return flow[i + 1];
+            }
+        }
+        return null;
+    }
 
-        TextView tvOrderId, tvCustomer, tvTotalPrice, tvPayment, tvStatus;
-        Spinner spinnerStatus;
+    // Status flow based on type & payment
+    private String[] getStatusFlow(OrderModel order) {
+        if ("pickup".equalsIgnoreCase(order.getOrderType())) {
+            return new String[]{"Pending", "Preparing", "Ready for Pickup", "Completed"};
+        } else {
+            if ("GCash".equalsIgnoreCase(order.getPayment_method())) {
+                return new String[]{"Pending", "Verifying Payment", "Preparing", "Out for Delivery", "Completed"};
+            } else {
+                // COD delivery
+                return new String[]{"Pending", "Preparing", "Out for Delivery", "Completed"};
+            }
+        }
+    }
+
+    // Convert status to progress dots
+    private String getProgressDots(OrderModel order) {
+        String[] flow = getStatusFlow(order);
+        StringBuilder sb = new StringBuilder();
+        boolean filled = true;
+        for (String status : flow) {
+            if (status.equalsIgnoreCase(order.getStatus())) {
+                sb.append("●"); // Current
+                filled = false;
+            } else if (filled) {
+                sb.append("●"); // Completed
+            } else {
+                sb.append("○"); // Pending
+            }
+        }
+        return sb.toString();
+    }
+
+    static class OrderViewHolder extends RecyclerView.ViewHolder {
+        TextView tvOrderId, tvCustomer, tvTotalPrice, tvPayment, tvStatus, tvProgress;
         Button btnUpdateStatus;
 
         public OrderViewHolder(@NonNull View itemView) {
@@ -92,7 +122,7 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
             tvTotalPrice = itemView.findViewById(R.id.tvTotalPrice);
             tvPayment = itemView.findViewById(R.id.tvPayment);
             tvStatus = itemView.findViewById(R.id.tvStatus);
-            spinnerStatus = itemView.findViewById(R.id.spinnerStatus);
+            tvProgress = itemView.findViewById(R.id.tvProgress);
             btnUpdateStatus = itemView.findViewById(R.id.btnUpdateStatus);
         }
     }
