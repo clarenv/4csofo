@@ -10,7 +10,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNavigation;
 
-    // Fragment instances
+    // Fragment instances - LAZY INITIALIZATION
     private AdminUsersFragment usersFragment;
     private AdminOrdersFragment ordersFragment;
     private AdminCategoriesFragment categoriesFragment;
@@ -24,71 +24,45 @@ public class AdminDashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_admin_dashboard);
 
-        bottomNavigation = findViewById(R.id.bottomNavigation);
+        // FIX: Add this to prevent keyboard from pushing layout
+        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
 
-        // Initialize fragments ONCE
-        usersFragment = new AdminUsersFragment();
-        ordersFragment = new AdminOrdersFragment();
-        categoriesFragment = new AdminCategoriesFragment();
-        menuItemsFragment = new AdminMenuItemsFragment();
+        bottomNavigation = findViewById(R.id.bottomNavigation);
 
         // Set initial title
         setTitle("Admin Dashboard");
 
-        // Load ALL fragments initially (Show/Hide method)
-        FragmentTransaction initialTransaction = getSupportFragmentManager().beginTransaction();
-        initialTransaction.add(R.id.fragmentContainer, usersFragment, "USERS");
-        initialTransaction.add(R.id.fragmentContainer, ordersFragment, "ORDERS");
-        initialTransaction.add(R.id.fragmentContainer, categoriesFragment, "CATEGORIES");
-        initialTransaction.add(R.id.fragmentContainer, menuItemsFragment, "MENU_ITEMS");
+        // Load initial fragment (LAZY loading)
+        usersFragment = new AdminUsersFragment();
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.fragmentContainer, usersFragment, "USERS")
+                .commit();
 
-        // Show only users, hide others
-        initialTransaction.hide(ordersFragment);
-        initialTransaction.hide(categoriesFragment);
-        initialTransaction.hide(menuItemsFragment);
-
-        initialTransaction.commit();
+        currentFragmentTag = "USERS";
 
         // Bottom navigation click listener
         bottomNavigation.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
+            String newTag = "";
 
-            // Prevent rapid taps
-            bottomNavigation.setEnabled(false);
-
-            FragmentTransaction transaction = getSupportFragmentManager()
-                    .beginTransaction()
-                    .setReorderingAllowed(true); // Performance
-
-            if (id == R.id.nav_users && !currentFragmentTag.equals("USERS")) {
-                transaction.hide(getCurrentFragment())
-                        .show(usersFragment);
-                setTitle("User Management");
-                currentFragmentTag = "USERS";
-            }
-            else if (id == R.id.nav_orders && !currentFragmentTag.equals("ORDERS")) {
-                transaction.hide(getCurrentFragment())
-                        .show(ordersFragment);
-                setTitle("Order Management");
-                currentFragmentTag = "ORDERS";
-            }
-            else if (id == R.id.nav_categories && !currentFragmentTag.equals("CATEGORIES")) {
-                transaction.hide(getCurrentFragment())
-                        .show(categoriesFragment);
-                setTitle("Categories");
-                currentFragmentTag = "CATEGORIES";
-            }
-            else if (id == R.id.nav_menu_items && !currentFragmentTag.equals("MENU_ITEMS")) {
-                transaction.hide(getCurrentFragment())
-                        .show(menuItemsFragment);
-                setTitle("Menu Items");
-                currentFragmentTag = "MENU_ITEMS";
+            // Determine which fragment to show
+            if (id == R.id.nav_users) {
+                newTag = "USERS";
+            } else if (id == R.id.nav_orders) {
+                newTag = "ORDERS";
+            } else if (id == R.id.nav_categories) {
+                newTag = "CATEGORIES";
+            } else if (id == R.id.nav_menu_items) {
+                newTag = "MENU_ITEMS";
             }
 
-            transaction.commit();
+            // If already on this fragment, do nothing
+            if (currentFragmentTag.equals(newTag)) {
+                return true;
+            }
 
-            // Re-enable after 200ms
-            bottomNavigation.postDelayed(() -> bottomNavigation.setEnabled(true), 200);
+            // Switch fragments
+            switchFragment(newTag);
 
             return true;
         });
@@ -98,16 +72,100 @@ public class AdminDashboardActivity extends AppCompatActivity {
     }
 
     /**
+     * Switch between fragments
+     */
+    private void switchFragment(String newTag) {
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+
+        // Hide current fragment
+        Fragment currentFragment = getCurrentFragment();
+        if (currentFragment != null) {
+            transaction.hide(currentFragment);
+        }
+
+        // Show or add the new fragment
+        Fragment newFragment = getSupportFragmentManager().findFragmentByTag(newTag);
+        if (newFragment == null) {
+            // Fragment doesn't exist yet, create it
+            newFragment = createFragment(newTag);
+            transaction.add(R.id.fragmentContainer, newFragment, newTag);
+        } else {
+            // Fragment exists, just show it
+            transaction.show(newFragment);
+        }
+
+        transaction.setReorderingAllowed(true)
+                .commitAllowingStateLoss();
+
+        // Update title based on fragment
+        updateTitle(newTag);
+
+        currentFragmentTag = newTag;
+    }
+
+    /**
+     * Create fragment instance based on tag
+     */
+    private Fragment createFragment(String tag) {
+        switch (tag) {
+            case "USERS":
+                if (usersFragment == null) {
+                    usersFragment = new AdminUsersFragment();
+                }
+                return usersFragment;
+
+            case "ORDERS":
+                if (ordersFragment == null) {
+                    ordersFragment = new AdminOrdersFragment();
+                }
+                return ordersFragment;
+
+            case "CATEGORIES":
+                if (categoriesFragment == null) {
+                    categoriesFragment = new AdminCategoriesFragment();
+                }
+                return categoriesFragment;
+
+            case "MENU_ITEMS":
+                if (menuItemsFragment == null) {
+                    menuItemsFragment = new AdminMenuItemsFragment();
+                }
+                return menuItemsFragment;
+
+            default:
+                return new AdminUsersFragment();
+        }
+    }
+
+    /**
      * Get current visible fragment
      */
-    private Fragment getCurrentFragment() { // CHANGED THIS LINE
-        switch (currentFragmentTag) {
-            case "USERS": return usersFragment;
-            case "ORDERS": return ordersFragment;
-            case "CATEGORIES": return categoriesFragment;
-            case "MENU_ITEMS": return menuItemsFragment;
-            default: return usersFragment;
+    private Fragment getCurrentFragment() {
+        return getSupportFragmentManager().findFragmentByTag(currentFragmentTag);
+    }
+
+    /**
+     * Update title based on fragment
+     */
+    private void updateTitle(String fragmentTag) {
+        String title = "Admin Dashboard";
+
+        switch (fragmentTag) {
+            case "USERS":
+                title = "User Management";
+                break;
+            case "ORDERS":
+                title = "Order Management";
+                break;
+            case "CATEGORIES":
+                title = "Categories";
+                break;
+            case "MENU_ITEMS":
+                title = "Menu Items";
+                break;
         }
+
+        setTitle(title);
     }
 
     /**
@@ -117,5 +175,15 @@ public class AdminDashboardActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setSubtitle(subtitle);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clean up fragments to prevent memory leaks
+        usersFragment = null;
+        ordersFragment = null;
+        categoriesFragment = null;
+        menuItemsFragment = null;
     }
 }

@@ -38,15 +38,6 @@ public class AdminOrdersFragment extends Fragment {
 
     private static final String TAG = "AdminOrdersFragment";
 
-    // Sequential status update logic
-    private static final ArrayList<String> STATUS_FLOW = new ArrayList<String>() {{
-        add("Pending");
-        add("Preparing");
-        add("Delivering");
-        add("Delivered");
-    }};
-    private static final String STATUS_CANCELLED = "Cancelled";
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -73,7 +64,7 @@ public class AdminOrdersFragment extends Fragment {
 
     private void setupRecycler() {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new AdminManageOrdersAdapter(getContext(), filteredList, this);
+        adapter = new AdminManageOrdersAdapter(getContext(), filteredList);
         recyclerView.setAdapter(adapter);
     }
 
@@ -85,7 +76,6 @@ public class AdminOrdersFragment extends Fragment {
         );
         filterAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilterStatus.setAdapter(filterAdapter);
-        spinnerFilterStatus.setSelection(0); // default to "All"
 
         spinnerFilterStatus.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
@@ -120,10 +110,12 @@ public class AdminOrdersFragment extends Fragment {
                     parseOrders(snapshot);
                 }
 
+                // Apply filter
                 String currentFilter = spinnerFilterStatus.getSelectedItem() != null
                         ? spinnerFilterStatus.getSelectedItem().toString()
                         : "All";
                 applyFilter(currentFilter);
+
                 showLoading(false);
             }
 
@@ -140,16 +132,37 @@ public class AdminOrdersFragment extends Fragment {
         for (DataSnapshot snap : snapshot.getChildren()) {
             try {
                 OrderModel order = snap.getValue(OrderModel.class);
+
                 if (order != null) {
+
                     order.setOrderKey(snap.getKey());
-                    if (order.getStatus() == null || order.getStatus().isEmpty()) order.setStatus("Pending");
-                    if (order.getPaymentMethod() == null || order.getPaymentMethod().isEmpty()) order.setPaymentMethod("N/A");
-                    if (order.getCustomerName() == null || order.getCustomerName().isEmpty()) order.setCustomerName("Unknown");
+
+                    if (order.getStatus() == null) order.setStatus("Pending");
+                    if (order.getPayment_method() == null) order.setPayment_method("N/A");
+                    if (order.getCustomerName() == null) order.setCustomerName("Unknown");
+
+                    if (order.getDeliveryLocation() != null)
+                        order.setDeliveryLocation(order.getDeliveryLocation());
+
+                    if (order.getOrderType() == null) order.setOrderType("delivery");
+                    if (order.getPickupTime() == null) order.setPickupTime("");
+                    if (order.getPickupBranch() == null) order.setPickupBranch("");
+
+                    if (order.getGcashReferenceNumber() == null)
+                        order.setGcashReferenceNumber("");
+
+                    if (order.getGcashProofDownloadUrl() == null)
+                        order.setGcashProofDownloadUrl("");
+
+                    if (order.getGcashProof() == null)
+                        order.setGcashProof("");
 
                     orderList.add(order);
+
                 } else {
                     Log.w(TAG, "Null OrderModel at key: " + snap.getKey());
                 }
+
             } catch (Exception e) {
                 Log.e(TAG, "Data parsing error at key: " + snap.getKey(), e);
             }
@@ -157,12 +170,16 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void applyFilter(String status) {
-        if (status == null) status = "All";
         filteredList.clear();
 
-        for (OrderModel order : orderList) {
-            if ("All".equalsIgnoreCase(status) || (order.getStatus() != null && order.getStatus().equalsIgnoreCase(status))) {
-                filteredList.add(order);
+        if ("All".equalsIgnoreCase(status)) {
+            filteredList.addAll(orderList);
+        } else {
+            for (OrderModel order : orderList) {
+                if (order.getStatus() != null &&
+                        order.getStatus().equalsIgnoreCase(status)) {
+                    filteredList.add(order);
+                }
             }
         }
 
@@ -170,8 +187,6 @@ public class AdminOrdersFragment extends Fragment {
     }
 
     private void updateUI() {
-        if (adapter == null) return; // safety check
-
         if (filteredList.isEmpty()) {
             emptyStateText.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
@@ -179,7 +194,6 @@ public class AdminOrdersFragment extends Fragment {
             emptyStateText.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
         }
-
         adapter.notifyDataSetChanged();
     }
 
@@ -193,53 +207,12 @@ public class AdminOrdersFragment extends Fragment {
         }
     }
 
-    /**
-     * Update order status sequentially: Pending -> Preparing -> Delivering -> Delivered
-     * Cancelling allowed except for delivered orders.
-     */
+    // Called from adapter
     public void updateOrderStatus(OrderModel order, String newStatus) {
-        if (order == null || order.getOrderKey() == null || newStatus == null) return;
-
-        String currentStatus = order.getStatus() != null ? order.getStatus().trim() : "Pending";
-        newStatus = newStatus.trim();
-
-        // Handle cancel
-        if (STATUS_CANCELLED.equalsIgnoreCase(newStatus)) {
-            if ("Delivered".equalsIgnoreCase(currentStatus)) {
-                showToast("Cannot cancel delivered order");
-                return;
-            }
-            performStatusUpdate(order, STATUS_CANCELLED);
-            return;
-        }
-
-        int currentIndex = STATUS_FLOW.indexOf(currentStatus);
-        int newIndex = STATUS_FLOW.indexOf(newStatus);
-
-        if (currentIndex == -1) currentIndex = 0;
-
-        if (newIndex == currentIndex + 1) {
-            performStatusUpdate(order, newStatus);
-        } else if (newIndex <= currentIndex) {
-            showToast("Cannot move order backward");
-        } else {
-            showToast("Invalid status update");
-        }
-    }
-
-    private void performStatusUpdate(OrderModel order, String newStatus) {
         if (order == null || order.getOrderKey() == null) return;
 
         ordersRef.child(order.getOrderKey()).child("status").setValue(newStatus)
-                .addOnSuccessListener(unused -> {
-                    order.setStatus(newStatus);
-
-                    // Force spinner to "All" to keep the order visible after status change
-                    spinnerFilterStatus.setSelection(0);
-
-                    applyFilter("All"); // refresh filtered list
-                    showToast("Status updated to " + newStatus);
-                })
-                .addOnFailureListener(e -> showToast("Update failed: " + e.getMessage()));
+                .addOnSuccessListener(unused -> showToast("Status updated"))
+                .addOnFailureListener(e -> showToast("Update failed"));
     }
 }

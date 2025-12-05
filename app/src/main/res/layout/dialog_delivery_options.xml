@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:padding="16dp"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- TITLE -->
+        <TextView
+            android:id="@+id/txtCodTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cash on Delivery"
+            android:textColor="#000"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_gravity="center_horizontal"
+            android:paddingBottom="10dp" />
+
+        <!-- Radio Buttons -->
+        <RadioGroup
+            android:id="@+id/radioGroupCOD"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/rbCurrentLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Use Current Location"
+                android:padding="6dp" />
+
+            <RadioButton
+                android:id="@+id/rbSavedAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saved Address:"
+                android:padding="6dp" />
+
+            <RadioButton
+                android:id="@+id/rbManualInput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manual Input"
+                android:padding="6dp" />
+
+        </RadioGroup>
+
+        <!-- Manual Input -->
+        <EditText
+            android:id="@+id/edtManualAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter full delivery address..."
+            android:padding="12dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:drawable/edit_text"
+            android:enabled="false" />
+
+        <!-- INFO BOX -->
+        <TextView
+            android:id="@+id/txtCodInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Allowed Areas Only: Bubukal, Calios, Bagumbayan, Gatid — Santa Cruz Laguna."
+            android:textColor="#444"
+            android:textSize="13sp"
+            android:padding="10dp"
+            android:background="#EEEEEE"
+            android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+
+</ScrollView>

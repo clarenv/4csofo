@@ -1,216 +1,221 @@
 package com.example.a4csofo;
 
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.Bundle;
-import android.util.Base64;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.fragment.app.Fragment;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.os.Handler;
+import android.widget.Toast;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.google.android.material.badge.BadgeDrawable;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView tvWelcome;
-    private ImageView ivCartIcon;
-    private RecyclerView recyclerViewFood;
-    private BottomNavigationView bottomNavigation;
-    private FirebaseAuth auth;
-    private List<FoodItem> foodList = new ArrayList<>();
-    private FoodAdapter foodAdapter;
-    private DatabaseReference usersRef;
+    BottomNavigationView bottomNavigation;
+    private BadgeDrawable cartBadge; // Add badge reference
+
+    // Fragment instances for better performance
+    private ClientHomeFragment homeFragment;
+    private ClientCartFragment cartFragment;
+    private ClientOrdersFragment ordersFragment;
+    private ClientProfileFragment profileFragment;
+
+    // Constants
+    private static final int CHECKOUT_REQUEST_CODE = 1001;
+    private static final String PREFS_NAME = "AppPrefs";
+    private static final String KEY_SHOW_ORDERS = "show_orders_after_checkout";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        auth = FirebaseAuth.getInstance();
-        tvWelcome = findViewById(R.id.tvWelcome);
-        recyclerViewFood = findViewById(R.id.recyclerViewFood);
+        // FIX: Prevent keyboard from pushing layout
+        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+
         bottomNavigation = findViewById(R.id.bottomNavigation);
-        ivCartIcon = findViewById(R.id.ivCartIcon);
-        usersRef = FirebaseDatabase.getInstance().getReference("users");
 
-        // Welcome message
-        FirebaseUser user = auth.getCurrentUser();
-        String userName = "Customer";
-        if (user != null && user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
-            userName = user.getDisplayName();
-        } else if (user != null && user.getEmail() != null) {
-            userName = user.getEmail().split("@")[0];
+        // Initialize badge (compatible with older versions)
+        cartBadge = bottomNavigation.getOrCreateBadge(R.id.nav_cart);
+        cartBadge.setVisible(false); // Hide initially
+
+        // Default Fragment - Initialize home fragment
+        homeFragment = new ClientHomeFragment();
+        loadFragment(homeFragment);
+
+        // Check if coming from CheckoutActivity via intent extra
+        if (getIntent() != null && getIntent().hasExtra("SHOW_ORDERS_TAB")) {
+            // Delay to ensure BottomNavigation is ready
+            new Handler().postDelayed(() -> {
+                bottomNavigation.setSelectedItemId(R.id.nav_orders);
+                // Clear the extra so it doesn't auto-show again on rotation
+                getIntent().removeExtra("SHOW_ORDERS_TAB");
+            }, 500);
         }
-        tvWelcome.setText("Welcome, " + userName + "!");
 
-        // RecyclerView setup
-        recyclerViewFood.setLayoutManager(new LinearLayoutManager(this));
-        foodAdapter = new FoodAdapter(foodList);
-        recyclerViewFood.setAdapter(foodAdapter);
-        loadFoodItemsFromFirebase();
-
-        // Bottom navigation
+        // Use setOnItemSelectedListener instead of deprecated setOnNavigationItemSelectedListener
         bottomNavigation.setOnItemSelectedListener(item -> {
+            Fragment fragment = null;
             int id = item.getItemId();
-            if (id == R.id.nav_home) return true;
-            else if (id == R.id.nav_cart) startActivity(new Intent(this, CartActivity.class));
-            else if (id == R.id.nav_orders) startActivity(new Intent(this, OrdersActivity.class));
-            else if (id == R.id.nav_profile) startActivity(new Intent(this, ProfileActivity.class));
-            return true;
+
+            if (id == R.id.nav_home) {
+                if (homeFragment == null) {
+                    homeFragment = new ClientHomeFragment();
+                }
+                fragment = homeFragment;
+            } else if (id == R.id.nav_cart) {
+                if (cartFragment == null) {
+                    cartFragment = new ClientCartFragment();
+                }
+                fragment = cartFragment;
+            } else if (id == R.id.nav_orders) {
+                if (ordersFragment == null) {
+                    ordersFragment = new ClientOrdersFragment();
+                }
+                fragment = ordersFragment;
+            } else if (id == R.id.nav_profile) {
+                if (profileFragment == null) {
+                    profileFragment = new ClientProfileFragment();
+                }
+                fragment = profileFragment;
+            }
+
+            return loadFragment(fragment);
         });
-
-        ivCartIcon.setOnClickListener(v -> startActivity(new Intent(this, CartActivity.class)));
-    }
-
-    /** ------------------ USER ONLINE/OFFLINE ------------------ **/
-    @Override
-    protected void onStart() {
-        super.onStart();
-        setUserOnlineStatus(true);
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
-        setUserOnlineStatus(false);
+    protected void onResume() {
+        super.onResume();
+
+        // Check SharedPreferences if need to show orders after checkout
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean showOrders = prefs.getBoolean(KEY_SHOW_ORDERS, false);
+
+        if (showOrders) {
+            // Clear the flag
+            prefs.edit().putBoolean(KEY_SHOW_ORDERS, false).apply();
+
+            // Auto-switch to Orders tab
+            new Handler().postDelayed(() -> {
+                if (bottomNavigation != null) {
+                    bottomNavigation.setSelectedItemId(R.id.nav_orders);
+
+                    // Refresh the orders fragment para makita ang bagong order
+                    if (ordersFragment != null) {
+                        // Pwede mong lagyan ng refresh method ang ordersFragment dito
+                        // ordersFragment.refreshOrders();
+                    }
+                }
+            }, 300);
+        }
     }
 
-    private void setUserOnlineStatus(boolean isOnline) {
-        FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser != null) {
-            DatabaseReference statusRef = usersRef.child(currentUser.getUid()).child("online");
-            if (isOnline) {
-                statusRef.setValue(true);
-                statusRef.onDisconnect().setValue(false);
-            } else {
-                statusRef.setValue(false);
+    /**
+     * Method to navigate to CheckoutActivity
+     * Call this from CartFragment
+     */
+    public void navigateToCheckout() {
+        Intent intent = new Intent(MainActivity.this, CheckoutActivity.class);
+        startActivityForResult(intent, CHECKOUT_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == CHECKOUT_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                // Save flag to show orders tab
+                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                prefs.edit().putBoolean(KEY_SHOW_ORDERS, true).apply();
+
+                // Update cart badge to 0 since cart is cleared after checkout
+                if (cartBadge != null) {
+                    cartBadge.setVisible(false);
+                    cartBadge.clearNumber();
+                }
+
+                // Show toast notification
+                Toast.makeText(this, "Order placed successfully! Redirecting to My Orders...", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    /** ------------------ FOOD DASHBOARD ------------------ **/
-    private void loadFoodItemsFromFirebase() {
-        DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
-        foodRef.get().addOnSuccessListener(snapshot -> {
-            foodList.clear();
-            for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                FoodItem food = itemSnapshot.getValue(FoodItem.class);
-                if (food != null) foodList.add(food);
-            }
-            foodAdapter.notifyDataSetChanged();
-        }).addOnFailureListener(e ->
-                Toast.makeText(this, "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-        );
+    private boolean loadFragment(Fragment fragment) {
+        if (fragment != null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, fragment)
+                    .setReorderingAllowed(true) // Add for better performance
+                    .commit();
+            return true;
+        }
+        return false;
     }
 
-    public static Bitmap base64ToBitmap(String base64Str) {
+    /**
+     * Helper method to update cart badge count - FIXED VERSION
+     */
+    public void updateCartBadge(int count) {
         try {
-            byte[] decoded = Base64.decode(base64Str, Base64.DEFAULT);
-            return BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /** ------------------ FOOD ADAPTER ------------------ **/
-    public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
-        private final List<FoodItem> foods;
-
-        public FoodAdapter(List<FoodItem> foods) { this.foods = foods; }
-
-        @NonNull
-        @Override
-        public FoodViewHolder onCreateViewHolder(@NonNull android.view.ViewGroup parent, int viewType) {
-            android.view.View view = android.view.LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_food, parent, false);
-            return new FoodViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
-            FoodItem food = foods.get(position);
-            holder.tvName.setText(food.name);
-            holder.tvPrice.setText("₱" + String.format("%.2f", food.price));
-            holder.tvDesc.setText(food.description);
-            holder.tvCategory.setText(food.category);
-            holder.tvPrepTime.setText(food.prepTime + " mins");
-
-            if (food.base64Image != null && !food.base64Image.isEmpty()) {
-                Bitmap bitmap = base64ToBitmap(food.base64Image);
-                if (bitmap != null) holder.ivFoodImage.setImageBitmap(bitmap);
-                else holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+            if (count > 0) {
+                cartBadge.setNumber(count);
+                cartBadge.setVisible(true);
             } else {
-                holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                cartBadge.setVisible(false);
+                cartBadge.clearNumber();
             }
-
-            holder.itemView.setAlpha(food.available ? 1f : 0.5f);
-            holder.btnAddCart.setEnabled(food.available);
-            holder.btnAddCart.setOnClickListener(v -> addToCart(food));
-        }
-
-        @Override
-        public int getItemCount() { return foods.size(); }
-
-        private void addToCart(FoodItem food) {
-            FirebaseUser currentUser = auth.getCurrentUser();
-            if (currentUser == null) {
-                Toast.makeText(MainActivity.this, "Please log in first", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            DatabaseReference cartRef = FirebaseDatabase.getInstance()
-                    .getReference("carts")
-                    .child(currentUser.getUid())
-                    .push();
-            cartRef.setValue(food).addOnSuccessListener(aVoid ->
-                            Toast.makeText(MainActivity.this, food.name + " added to cart!", Toast.LENGTH_SHORT).show())
-                    .addOnFailureListener(e ->
-                            Toast.makeText(MainActivity.this, "Failed to add to cart: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        }
-
-        class FoodViewHolder extends RecyclerView.ViewHolder {
-            ImageView ivFoodImage;
-            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime;
-            Button btnAddCart;
-
-            public FoodViewHolder(@NonNull android.view.View itemView) {
-                super(itemView);
-                ivFoodImage = itemView.findViewById(R.id.ivFoodImage);
-                tvName = itemView.findViewById(R.id.tvFoodName);
-                tvPrice = itemView.findViewById(R.id.tvFoodPrice);
-                tvDesc = itemView.findViewById(R.id.tvFoodDesc);
-                tvCategory = itemView.findViewById(R.id.tvFoodCategory);
-                tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
-                btnAddCart = itemView.findViewById(R.id.btnAddCart);
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    /** ------------------ FOOD MODEL ------------------ **/
-    public static class FoodItem {
-        public String name;
-        public String description;
-        public String category;
-        public String prepTime;
-        public double price;
-        public String base64Image;
-        public boolean available = true;
+    /**
+     * Handle back button press - go to home instead of exiting
+     */
+    @Override
+    public void onBackPressed() {
+        // Check current fragment
+        Fragment currentFragment = getSupportFragmentManager()
+                .findFragmentById(R.id.fragmentContainer);
 
-        public FoodItem() {}
+        if (currentFragment instanceof ClientHomeFragment) {
+            // If already on home, exit app
+            super.onBackPressed();
+        } else {
+            // Go back to home
+            bottomNavigation.setSelectedItemId(R.id.nav_home);
+        }
+    }
+
+    /**
+     * Get cart fragment instance (if needed by other fragments)
+     */
+    public ClientCartFragment getCartFragment() {
+        return cartFragment;
+    }
+
+    /**
+     * Get home fragment instance (if needed by other fragments)
+     */
+    public ClientHomeFragment getHomeFragment() {
+        return homeFragment;
+    }
+
+    /**
+     * Clean up fragments to prevent memory leaks
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Optional: Clear fragment references
+        homeFragment = null;
+        cartFragment = null;
+        ordersFragment = null;
+        profileFragment = null;
     }
 }

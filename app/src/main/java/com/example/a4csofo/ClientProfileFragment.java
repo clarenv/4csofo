@@ -2,14 +2,17 @@ package com.example.a4csofo;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
@@ -17,7 +20,7 @@ import com.google.firebase.database.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ProfileActivity extends AppCompatActivity {
+public class ClientProfileFragment extends Fragment {
 
     private EditText edtName, edtEmail, edtAddress, edtPhone;
     private Button btnSave, btnEdit, btnLogout;
@@ -27,45 +30,50 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseUser currentUser;
     private DatabaseReference usersRef;
 
-    private BottomNavigationView bottomNavigation;
+    public ClientProfileFragment() { }
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_profile);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
 
-        edtName = findViewById(R.id.edtName);
-        edtEmail = findViewById(R.id.edtEmail);
-        edtAddress = findViewById(R.id.edtAddress);
-        edtPhone = findViewById(R.id.edtPhone);
+        View view = inflater.inflate(R.layout.fragment_client_profile, container, false);
 
-        btnSave = findViewById(R.id.btnSave);
-        btnEdit = findViewById(R.id.btnEdit);
-        btnLogout = findViewById(R.id.btnLogout);
+        // Initialize views
+        edtName = view.findViewById(R.id.edtName);
+        edtEmail = view.findViewById(R.id.edtEmail);
+        edtAddress = view.findViewById(R.id.edtAddress);
+        edtPhone = view.findViewById(R.id.edtPhone);
 
-        bottomNavigation = findViewById(R.id.bottomNavigation);
+        btnSave = view.findViewById(R.id.btnSave);
+        btnEdit = view.findViewById(R.id.btnEdit);
+        btnLogout = view.findViewById(R.id.btnLogout);
 
+        // Firebase
         auth = FirebaseAuth.getInstance();
         currentUser = auth.getCurrentUser();
         usersRef = FirebaseDatabase.getInstance().getReference("users");
 
         if (currentUser == null) {
-            Toast.makeText(this, "No user logged in", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(ProfileActivity.this, LoginActivity.class));
-            finish();
-            return;
+            Toast.makeText(requireContext(), "No user logged in", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(requireActivity(), LoginActivity.class));
+            getActivity().finish();
+            return view;
         }
 
+        // Load user data
         loadUserData();
         setEditingEnabled(false);
 
+        // Edit / Cancel button
         btnEdit.setOnClickListener(v -> {
             isEditing = !isEditing;
             setEditingEnabled(isEditing);
-
             btnEdit.setText(isEditing ? "Cancel" : "Edit");
         });
 
+        // Save button
         btnSave.setOnClickListener(v -> {
             saveUserData();
             setEditingEnabled(false);
@@ -73,46 +81,23 @@ public class ProfileActivity extends AppCompatActivity {
             isEditing = false;
         });
 
+        // Logout button
         btnLogout.setOnClickListener(v -> {
             auth.signOut();
-            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(ProfileActivity.this, LoginActivity.class));
-            finish();
+            Toast.makeText(requireContext(), "Logged out successfully", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(requireActivity(), LoginActivity.class));
+            getActivity().finish();
         });
 
-        setupNavigation();
+        return view;
     }
 
-    private void setupNavigation() {
-        bottomNavigation.setSelectedItemId(R.id.nav_profile);
-
-        bottomNavigation.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                startActivity(new Intent(ProfileActivity.this, MainActivity.class));
-                return true;
-            } else if (id == R.id.nav_cart) {
-                startActivity(new Intent(ProfileActivity.this, CartActivity.class));
-                return true;
-            } else if (id == R.id.nav_orders) {
-                startActivity(new Intent(ProfileActivity.this, OrdersActivity.class));
-                return true;
-            } else if (id == R.id.nav_profile) {
-                return true;
-            }
-            return false;
-        });
-    }
-
-    // -------------------------
-    // LOAD USER DATA
-    // -------------------------
     private void loadUserData() {
         String uid = currentUser.getUid();
 
         usersRef.child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot snapshot) {
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
                     edtName.setText(snapshot.child("name").getValue(String.class));
                     edtEmail.setText(snapshot.child("email").getValue(String.class));
@@ -122,15 +107,12 @@ public class ProfileActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError error) {
-                Toast.makeText(ProfileActivity.this, "Failed to load data", Toast.LENGTH_SHORT).show();
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(requireContext(), "Failed to load data", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // -------------------------
-    // SAVE USER DATA
-    // -------------------------
     private void saveUserData() {
         String uid = currentUser.getUid();
 
@@ -142,10 +124,10 @@ public class ProfileActivity extends AppCompatActivity {
 
         usersRef.child(uid).updateChildren(data)
                 .addOnSuccessListener(aVoid ->
-                        Toast.makeText(ProfileActivity.this, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT).show()
                 )
                 .addOnFailureListener(e ->
-                        Toast.makeText(ProfileActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
     }
 

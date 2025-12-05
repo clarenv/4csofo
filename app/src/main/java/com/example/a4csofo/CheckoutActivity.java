@@ -1,24 +1,30 @@
 package com.example.a4csofo;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import com.google.android.gms.location.*;
+import com.google.android.gms.tasks.CancellationTokenSource;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import java.io.IOException;
 import java.util.*;
 
 public class CheckoutActivity extends AppCompatActivity {
@@ -29,23 +35,35 @@ public class CheckoutActivity extends AppCompatActivity {
     private Button btnConfirm;
 
     private ArrayList<CartItem> cartList = new ArrayList<>();
+    // NOTE: subtotal and vat are maintained when loading cart
     private double subtotal = 0, vat = 0, deliveryFee = 30, total = 0;
 
     private FirebaseAuth auth;
     private DatabaseReference cartRef;
 
-    private String deliveryLocation = "";
-    private static final String SHOP_LOCATION = "Bubukal, Sta. Cruz, Laguna";
-    private int nextPickUpNumber = 1;
+    private String deliveryLocation = ""; // store address here
+    private FusedLocationProviderClient fusedLocationClient;
 
-    // Allowed barangays
-    private static final String[] ALLOWED_BARANGAYS = {
-            "Patimbao", "Labuin", "San Juan", "Gatid", "Bagumbayan"
-    };
+    // Allowed barangays for checkout
+    private final List<String> allowedBarangays = Arrays.asList(
+            "bubukal",
+            "calios",
+            "bagumbayan",
+            "gatid"
+    );
 
-    // GCash
-    private static final int PICK_IMAGE_REQUEST = 101;
-    private String gcashProofBase64 = "";
+    private final int LOCATION_REQUEST_CODE = 1001;
+
+    // --- GCash related fields ---
+    private static final int REQ_CODE_PICK_IMAGE = 2001;
+    private Uri gcashImageUri = null;
+    private String gcashReferenceNumber = "";
+    private String gcashProofDownloadUrl = "";
+
+    // --- Pickup fields to persist between dialogs & confirmOrder
+    private String pickupBranch = "";
+    private String pickupTime = "";
+    private String orderType = "delivery"; // "delivery" or "pickup"
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +71,7 @@ public class CheckoutActivity extends AppCompatActivity {
         setContentView(R.layout.activity_checkout);
 
         auth = FirebaseAuth.getInstance();
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         cartContainer = findViewById(R.id.cartContainer);
         txtSubtotal = findViewById(R.id.txtSubtotal);
@@ -63,88 +82,36 @@ public class CheckoutActivity extends AppCompatActivity {
         btnConfirm = findViewById(R.id.btnConfirm);
 
         loadCartFromFirebase();
-        prefetchPickUpNumber();
 
-        paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            RadioButton selected = findViewById(checkedId);
-            if (selected != null) {
-                String paymentText = selected.getText().toString();
-                if (paymentText.equalsIgnoreCase("GCash")) {
-                    showGcashPopup();
-                } else if (paymentText.equalsIgnoreCase("Cash on Delivery")) {
-                    showCODPopup();
-                } else if (paymentText.equalsIgnoreCase("Pick Up")) {
-                    showPickUpDialog();
-                }
-            }
-        });
+        // Start with confirm disabled until valid selection/validation OR pickup/GCash completed
+        btnConfirm.setEnabled(false);
+        btnConfirm.setAlpha(0.5f);
 
         btnConfirm.setOnClickListener(v -> confirmOrder());
-    }
 
-    private void prefetchPickUpNumber() {
-        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
-        ordersRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                nextPickUpNumber = (int) snapshot.getChildrenCount() + 1;
-            }
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
-        });
-    }
+        // When payment selection changes: show dialogs appropriately
+        paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            RadioButton selected = findViewById(checkedId);
 
-    // ------------------ COD POPUP ---------------------
+            if (selected != null) {
+                String paymentText = selected.getText().toString().toLowerCase().trim();
 
-    private void showCODPopup() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_cod_location, null);
-
-        EditText inputHouse = dialogView.findViewById(R.id.inputHouse);
-        EditText inputBarangay = dialogView.findViewById(R.id.inputBarangay);
-        TextView txtError = dialogView.findViewById(R.id.txtCodError);
-        Button btnConfirmCOD = dialogView.findViewById(R.id.btnCodConfirm);
-
-        builder.setView(dialogView);
-        AlertDialog dialog = builder.create();
-
-        inputBarangay.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String barangay = s.toString().trim();
-                boolean allowed = false;
-                for (String b : ALLOWED_BARANGAYS) {
-                    if (b.equalsIgnoreCase(barangay)) { allowed = true; break; }
+                if (paymentText.contains("gcash")) {
+                    showGcashCombinedDialog();
+                    btnConfirm.setEnabled(false);
+                    btnConfirm.setAlpha(0.5f);
                 }
-                if (allowed) {
-                    txtError.setText("");
-                    btnConfirmCOD.setEnabled(true);
-                } else {
-                    txtError.setText("COD not available in this barangay.");
-                    btnConfirmCOD.setEnabled(false);
+                else if (paymentText.contains("cash")) {
+                    showDeliveryLocationDialog();
+                }
+                else if (paymentText.contains("pick")) {
+                    // Fix: This now works for "Pick Up", "Pick-up", "PICK UP", etc.
+                    showPickupOptionsDialog();
                 }
             }
-            @Override public void afterTextChanged(android.text.Editable s) { }
         });
 
-        btnConfirmCOD.setOnClickListener(v -> {
-            String house = inputHouse.getText().toString().trim();
-            String barangay = inputBarangay.getText().toString().trim();
-
-            if (house.isEmpty() || barangay.isEmpty()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            deliveryLocation = house + ", " + barangay + ", Santa Cruz, Laguna";
-            Toast.makeText(this, "Delivery location saved!", Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-        });
-
-        dialog.show();
     }
-
-    // ------------------ CART LOADING ------------------------
 
     private void loadCartFromFirebase() {
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -159,14 +126,27 @@ public class CheckoutActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartList.clear();
+
+                // 🔹 Merge items by name
+                HashMap<String, CartItem> mergedItems = new HashMap<>();
+
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
                     AdminMenuItemsFragment.FoodItem food = itemSnapshot.getValue(AdminMenuItemsFragment.FoodItem.class);
                     if (food != null) {
-                        cartList.add(new CartItem(food.name, 1, food.price));
+                        if (mergedItems.containsKey(food.name)) {
+                            // Add quantity
+                            CartItem existing = mergedItems.get(food.name);
+                            mergedItems.put(food.name, new CartItem(food.name, existing.getQuantity() + 1, food.price));
+                        } else {
+                            mergedItems.put(food.name, new CartItem(food.name, 1, food.price));
+                        }
                     }
                 }
+
+                cartList.addAll(mergedItems.values());
                 loadCart();
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(CheckoutActivity.this, "Failed to load cart: " + error.getMessage(), Toast.LENGTH_SHORT).show();
@@ -203,7 +183,6 @@ public class CheckoutActivity extends AppCompatActivity {
         txtTotal.setText("₱" + String.format("%.2f", total));
     }
 
-    // ----------------- ORDER CONFIRMATION ------------------------
 
     private void confirmOrder() {
         int selectedId = paymentGroup.getCheckedRadioButtonId();
@@ -215,10 +194,18 @@ public class CheckoutActivity extends AppCompatActivity {
         RadioButton selected = findViewById(selectedId);
         String paymentMethod = selected.getText().toString();
 
-        if (paymentMethod.equalsIgnoreCase("Cash on Delivery") && deliveryLocation.isEmpty()) {
-            Toast.makeText(this, "Please enter delivery location", Toast.LENGTH_SHORT).show();
-            showCODPopup();
+        // COD and GCash require allowed barangay; pickup does not
+        if ((paymentMethod.equalsIgnoreCase("cash on delivery") || paymentMethod.equalsIgnoreCase("gcash"))
+                && !isValidBarangay(deliveryLocation)) {
+            Toast.makeText(this, "Your location is not allowed to order.", Toast.LENGTH_LONG).show();
             return;
+        }
+
+        if (paymentMethod.equalsIgnoreCase("gcash")) {
+            if (gcashReferenceNumber.trim().isEmpty() || gcashProofDownloadUrl.isEmpty() || deliveryLocation.isEmpty()) {
+                Toast.makeText(this, "Complete all GCash payment fields before confirming.", Toast.LENGTH_LONG).show();
+                return;
+            }
         }
 
         FirebaseUser currentUser = auth.getCurrentUser();
@@ -229,8 +216,7 @@ public class CheckoutActivity extends AppCompatActivity {
             itemsList.add(item.getName() + " x" + item.getQuantity());
         }
 
-        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
-
+        // Use YOUR OrderModel (external) — constructor matches your OrderModel.java
         OrderModel order = new OrderModel(
                 currentUser.getUid(),
                 "Customer Name",
@@ -241,285 +227,527 @@ public class CheckoutActivity extends AppCompatActivity {
                 deliveryLocation
         );
 
-        if(paymentMethod.equalsIgnoreCase("GCash")) {
-            order.setGcashProof(gcashProofBase64);
+        // Set extras: pickup/delivery type and pickup info if applicable
+        if (paymentMethod.equalsIgnoreCase("pick-up")) {
+            order.setOrderType("pickup");
+            order.setPickupBranch(pickupBranch != null ? pickupBranch : "");
+            order.setPickupTime(pickupTime != null ? pickupTime : "");
+            // For pickup, you may want deliveryLocation to indicate pickup location — we already set it when pickup dialog saved
+        } else {
+            order.setOrderType("delivery");
         }
 
-        ordersRef.push().setValue(order)
-                .addOnSuccessListener(aVoid -> {
-                    cartRef.removeValue();
+        // GCash fields
+        if (paymentMethod.equalsIgnoreCase("gcash")) {
+            order.setGcashReferenceNumber(gcashReferenceNumber != null ? gcashReferenceNumber : "");
+            order.setGcashProofDownloadUrl(gcashProofDownloadUrl != null ? gcashProofDownloadUrl : "");
+        }
 
-                    if (paymentMethod.equalsIgnoreCase("Pick Up")) {
-                        showPickUpDialog();
-                    } else {
-                        showReceiptPopup(itemsList, total, paymentMethod);
-                    }
+        // Create Firebase key and set it on the model before writing
+        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
+        String key = ordersRef.push().getKey();
+        if (key == null) {
+            Toast.makeText(this, "Failed to generate order key.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        order.setOrderKey(key);
+
+        // Save to Firebase at /orders/{key}
+        ordersRef.child(key).setValue(order)
+                .addOnSuccessListener(aVoid -> {
+                    // Clear cart
+                    if (cartRef != null) cartRef.removeValue();
+
+                    // Show receipt with local computed values
+                    showReceiptPopup(itemsList, this.total, paymentMethod);
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(CheckoutActivity.this, "Failed to place order: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
     }
 
-    // ----------------- GCASH ----------------------------
+    // ---------------- Helper: sanitize/normalize address text ----------------
+    private String cleanText(String text) {
+        if (text == null) return "";
+        String s = text.toLowerCase()
+                .replaceAll("[\\.,]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        s = s.replace("barangay ", "")
+                .replace("barangay", "")
+                .replace("brgy ", "")
+                .replace("brgy", "")
+                .replace("bgy ", "")
+                .replace("bgy", "")
+                .replace("purok ", "")
+                .replace("purok", "")
+                .replace("sitio ", "")
+                .replace("sitio", "")
+                .trim();
+        s = s.replaceAll("\\s+", " ").trim();
+        return s;
+    }
 
-    private void showGcashPopup() {
+    // ---------------- UPDATED: isValidBarangay ----------------
+    private boolean isValidBarangay(String location) {
+        if (location == null || location.isEmpty()) return false;
+        String cleaned = cleanText(location);
+        // Must contain Santa Cruz
+        boolean containsSantaCruz = cleaned.contains("santa cruz") || cleaned.contains("sta cruz") || cleaned.contains("santa-cruz");
+        if (!containsSantaCruz) return false;
+        for (String barangay : allowedBarangays) {
+            if (cleaned.contains(barangay.toLowerCase())) return true;
+        }
+        return false;
+    }
+
+    private void validateDeliveryLocation(String location) {
+        boolean valid = isValidBarangay(location);
+        btnConfirm.setEnabled(valid);
+        btnConfirm.setAlpha(valid ? 1f : 0.5f);
+    }
+
+    // ---------------- COD Dialog ----------------
+    private void showDeliveryLocationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_gcash_payment, null);
+        builder.setTitle("Select Delivery Location");
 
-        EditText edtGcashNumber = dialogView.findViewById(R.id.edtGcashNumber);
-        EditText edtReference = dialogView.findViewById(R.id.edtReference);
-        Button btnUpload = dialogView.findViewById(R.id.btnUpload);
-        Button btnConfirmGCash = dialogView.findViewById(R.id.btnConfirmGCash);
-        Button btnClose = dialogView.findViewById(R.id.btnClose);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_delivery_options, null);
 
-        btnConfirmGCash.setEnabled(false); // initially disabled
+        RadioButton rbCurrent = dialogView.findViewById(R.id.rbCurrentLocation);
+        RadioButton rbSaved = dialogView.findViewById(R.id.rbSavedAddress);
+        RadioButton rbManual = dialogView.findViewById(R.id.rbManualInput);
+        EditText edtManual = dialogView.findViewById(R.id.edtManualAddress);
+        edtManual.setEnabled(false);
 
         builder.setView(dialogView);
-        AlertDialog dialog = builder.create();
-        dialog.show();
 
-        // Enable confirm button only if GCash number valid + (ref OR screenshot)
-        android.text.TextWatcher watcher = new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { validateGCash(); }
-            @Override public void afterTextChanged(android.text.Editable s) {}
-            private void validateGCash() {
-                String number = edtGcashNumber.getText().toString().trim();
-                String ref = edtReference.getText().toString().trim();
-                boolean numberValid = number.matches("^09\\d{9}$"); // PH 11-digit
-                boolean refValid = ref.isEmpty() || ref.matches("\\d{13}");
-                boolean proofProvided = !gcashProofBase64.isEmpty() || !ref.isEmpty();
+        FirebaseUser user = auth.getCurrentUser();
+        if (user != null) {
+            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users")
+                    .child(user.getUid()).child("address");
+            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    String saved = snapshot.getValue(String.class);
+                    if (saved != null && !saved.isEmpty()) rbSaved.setText("Saved Address: " + saved);
+                    else rbSaved.setEnabled(false);
+                }
+                @Override public void onCancelled(@NonNull DatabaseError error) {}
+            });
+        }
 
-                btnConfirmGCash.setEnabled(numberValid && proofProvided && refValid);
-            }
-        };
-
-        edtGcashNumber.addTextChangedListener(watcher);
-        edtReference.addTextChangedListener(watcher);
-
-        btnUpload.setOnClickListener(v -> openImagePicker());
-
-        btnConfirmGCash.setOnClickListener(v -> {
-            String gcashNumber = edtGcashNumber.getText().toString().trim();
-            String reference = edtReference.getText().toString().trim();
-
-            if (!gcashNumber.matches("^09\\d{9}$")) {
-                Toast.makeText(this, "Enter valid PH GCash number", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (!reference.isEmpty() && !reference.matches("\\d{13}")) {
-                Toast.makeText(this, "Reference number must be 13 digits", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Save reference number as proof if no screenshot
-            if (!reference.isEmpty()) gcashProofBase64 = reference;
-
-            Toast.makeText(this, "GCash payment info saved!", Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
+        rbCurrent.setOnClickListener(v -> {
+            edtManual.setEnabled(false);
+            orderType = "delivery";
+            requestCurrentLocation(); // this will set deliveryLocation and call validateDeliveryLocation()
         });
 
-        btnClose.setOnClickListener(v -> dialog.dismiss());
+        rbSaved.setOnClickListener(v -> {
+            edtManual.setEnabled(false);
+            orderType = "delivery";
+            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ","");
+            validateDeliveryLocation(deliveryLocation);
+        });
+
+        rbManual.setOnClickListener(v -> {
+            edtManual.setEnabled(true);
+            edtManual.requestFocus();
+            orderType = "delivery";
+            deliveryLocation = edtManual.getText().toString();
+            validateDeliveryLocation(deliveryLocation);
+        });
+
+        edtManual.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { if (rbManual.isChecked()) { deliveryLocation = s.toString(); validateDeliveryLocation(deliveryLocation); } }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            if (!deliveryLocation.isEmpty()) Toast.makeText(this, "Delivery location saved!", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dlg = builder.create();
+        dlg.setCanceledOnTouchOutside(true);
+        dlg.show();
     }
 
-    private void openImagePicker() {
-        Intent intent = new Intent();
-        intent.setType("image/*");
-        intent.setAction(Intent.ACTION_GET_CONTENT);
+    /**
+     * Request current location using getCurrentLocation with a cancellation token.
+     * Improved fallback logic: subLocality -> featureName -> addressLine -> search allowed barangays in full address.
+     */
+    private void requestCurrentLocation() {
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_REQUEST_CODE);
+            return;
+        }
+
         try {
-            startActivityForResult(Intent.createChooser(intent, "Select Proof of Payment"), PICK_IMAGE_REQUEST);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, "No app found to pick image", Toast.LENGTH_SHORT).show();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
+                    .addOnSuccessListener(location -> {
+                        if (location == null) {
+                            Toast.makeText(this, "Unable to get current location.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+
+                        try {
+                            List<Address> list = geocoder.getFromLocation(
+                                    location.getLatitude(),
+                                    location.getLongitude(),
+                                    3
+                            );
+
+                            if (list == null || list.isEmpty()) {
+                                Toast.makeText(this, "Unable to read address.", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+
+                            Address a = list.get(0);
+
+                            // Try multiple fields
+                            String barangay = safeTrim(a.getSubLocality());
+                            String town = safeTrim(a.getLocality());
+                            String province = safeTrim(a.getAdminArea());
+                            String feature = safeTrim(a.getFeatureName());
+                            String addressLine = "";
+                            try { addressLine = a.getAddressLine(0); } catch (Exception ignored) {}
+
+                            // If subLocality empty, use featureName or try to extract from addressLine by matching allowed barangays
+                            if (isEmpty(barangay)) {
+                                if (!isEmpty(feature)) barangay = feature;
+                                else {
+                                    // Try to detect allowed barangays inside addressLine
+                                    String lower = (addressLine != null ? addressLine.toLowerCase() : "");
+                                    for (String b : allowedBarangays) {
+                                        if (lower.contains(b.toLowerCase())) {
+                                            barangay = b;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // If still empty, set just town+province so something is present
+                            StringBuilder finalAddress = new StringBuilder();
+                            if (!isEmpty(barangay)) finalAddress.append(barangay).append(" ");
+                            if (!isEmpty(town)) finalAddress.append(town).append(" ");
+                            if (!isEmpty(province)) finalAddress.append(province);
+
+                            deliveryLocation = finalAddress.toString().trim();
+                            if (deliveryLocation.isEmpty()) {
+                                // ultimate fallback: use whatever addressLine we got
+                                deliveryLocation = (addressLine != null ? addressLine : "");
+                            }
+
+                            // Validate (will enable confirm if valid)
+                            validateDeliveryLocation(deliveryLocation);
+
+                            if (!btnConfirm.isEnabled()) {
+                                Toast.makeText(
+                                        this,
+                                        "Your current location (" + deliveryLocation + ") is NOT allowed.\n\n" +
+                                                "Allowed Barangays:\n" + allowedBarangays,
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            } else {
+                                Toast.makeText(this, "Location Detected: " + deliveryLocation, Toast.LENGTH_SHORT).show();
+                            }
+
+                        } catch (IOException e) {
+                            Toast.makeText(this, "Failed to decode location.", Toast.LENGTH_SHORT).show();
+                        }
+
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(this, "Unable to get current location.", Toast.LENGTH_SHORT).show();
+                    });
+        } catch (Exception e) {
+            Toast.makeText(this, "Location error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
+
+    private boolean isEmpty(String s) { return s == null || s.trim().isEmpty(); }
+    private String safeTrim(String s) { return s == null ? "" : s.trim(); }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) requestCurrentLocation();
+            else Toast.makeText(this, "Location permission denied.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ---------------- PICK-UP DIALOG ----------------
+    private void showPickupOptionsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Pick-Up Options");
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_pickup_options, null);
+
+        Spinner branchSpinner = view.findViewById(R.id.spinnerBranch);
+        EditText edtPickupTime = view.findViewById(R.id.edtPickupTime);
+        TextView txtInstructions = view.findViewById(R.id.txtPickupInstructions);
+
+        // Fill branches
+        List<String> branches = Arrays.asList("Main Branch", "East Branch", "West Branch");
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        branchSpinner.setAdapter(adapter);
+
+        txtInstructions.setText("Bring your order reference or QR code when collecting your order at the selected branch.");
+
+        builder.setView(view);
+
+        // Provide Save/Cancel but implement Save in custom listener to keep dialog open until validation done
+        builder.setPositiveButton("Save", null);
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(true);
+
+        // Setup time picker when user taps pickup time
+        edtPickupTime.setFocusable(false);
+        edtPickupTime.setOnClickListener(v -> {
+            // default to current time
+            Calendar now = Calendar.getInstance();
+            int hour = now.get(Calendar.HOUR_OF_DAY);
+            int minute = now.get(Calendar.MINUTE);
+            TimePickerDialog tpd = new TimePickerDialog(CheckoutActivity.this, (view1, hourOfDay, minute1) -> {
+                String hh = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute1);
+                edtPickupTime.setText(hh);
+            }, hour, minute, false);
+            tpd.show();
+        });
+
+        dialog.setOnShowListener(d -> {
+            Button b = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            b.setOnClickListener(v -> {
+                String selectedBranch = branchSpinner.getSelectedItem() != null ? branchSpinner.getSelectedItem().toString() : "Main Branch";
+                String selectedPickupTime = edtPickupTime.getText().toString().trim();
+                if (selectedPickupTime.isEmpty()) selectedPickupTime = "ASAP";
+
+                // Save into activity-level pickup fields
+                pickupBranch = selectedBranch;
+                pickupTime = selectedPickupTime;
+                orderType = "pickup";
+
+                // Also set deliveryLocation to a human readable pickup note (so receipt shows it)
+                deliveryLocation = "Pick-up at " + selectedBranch + " (" + selectedPickupTime + ")";
+                Toast.makeText(this, "Pick-Up set: " + deliveryLocation, Toast.LENGTH_LONG).show();
+
+                // Enable Confirm button for pickup
+                btnConfirm.setEnabled(true);
+                btnConfirm.setAlpha(1f);
+
+                dialog.dismiss();
+            });
+        });
+
+        dialog.show();
+    }
+
+
+    // ---------------- GCash Combined Dialog ----------------
+    private void showGcashCombinedDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("GCash Payment");
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_gcash_combined, null);
+
+        ImageView qrImage = view.findViewById(R.id.qrImage);
+        RadioButton rbCurrent = view.findViewById(R.id.rbCurrentLocation);
+        RadioButton rbSaved = view.findViewById(R.id.rbSavedAddress);
+        RadioButton rbManual = view.findViewById(R.id.rbManualInput);
+        EditText edtManual = view.findViewById(R.id.edtManualAddress);
+        ImageView imgPreview = view.findViewById(R.id.imgPreview);
+        EditText edtRef = view.findViewById(R.id.edtReferenceNumber);
+        Button btnSelect = view.findViewById(R.id.btnChooseImage);
+        Button btnSave = view.findViewById(R.id.btnSavePayment);
+
+        edtManual.setEnabled(false);
+        builder.setView(view);
+        AlertDialog dialog = builder.create();
+
+        FirebaseUser user = auth.getCurrentUser();
+        if (user != null) {
+            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users")
+                    .child(user.getUid()).child("address");
+            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    String saved = snapshot.getValue(String.class);
+                    if (saved != null && !saved.isEmpty()) {
+                        rbSaved.setText("Saved Address: " + saved);
+                        rbSaved.setEnabled(true);
+                    } else rbSaved.setEnabled(false);
+                }
+                @Override public void onCancelled(@NonNull DatabaseError error) {}
+            });
+        }
+
+        // Location radio buttons
+        rbCurrent.setOnClickListener(v -> { edtManual.setEnabled(false); orderType = "delivery"; requestCurrentLocation(); });
+        rbSaved.setOnClickListener(v -> {
+            edtManual.setEnabled(false);
+            orderType = "delivery";
+            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ","");
+            validateDeliveryLocation(deliveryLocation);
+        });
+        rbManual.setOnClickListener(v -> {
+            edtManual.setEnabled(true);
+            edtManual.requestFocus();
+            orderType = "delivery";
+            deliveryLocation = edtManual.getText().toString();
+            validateDeliveryLocation(deliveryLocation);
+        });
+
+        edtManual.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (rbManual.isChecked()) {
+                    deliveryLocation = s.toString();
+                    validateDeliveryLocation(deliveryLocation);
+                }
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        // Select GCash screenshot
+        btnSelect.setOnClickListener(v -> {
+            Intent pickIntent = new Intent(Intent.ACTION_PICK);
+            pickIntent.setType("image/*");
+            startActivityForResult(pickIntent, REQ_CODE_PICK_IMAGE);
+        });
+
+        // Save GCash payment info
+        btnSave.setOnClickListener(v -> {
+            // For GCash, require valid delivery location (we need delivery).
+            if (deliveryLocation == null || deliveryLocation.isEmpty()) {
+                Toast.makeText(this, "Please select a delivery location first.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            if (!isValidBarangay(deliveryLocation)) {
+                Toast.makeText(this, "Delivery location not allowed for checkout.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            gcashReferenceNumber = edtRef.getText().toString().trim();
+            if (gcashReferenceNumber.isEmpty()) {
+                Toast.makeText(this, "Enter GCash reference number.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (gcashImageUri == null) {
+                Toast.makeText(this, "Please upload GCash screenshot.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Upload GCash image to Firebase Storage
+            StorageReference storageRef = FirebaseStorage.getInstance().getReference("gcash_proofs/" + System.currentTimeMillis() + ".jpg");
+            storageRef.putFile(gcashImageUri)
+                    .addOnSuccessListener(taskSnapshot -> storageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                        gcashProofDownloadUrl = uri.toString();
+                        Toast.makeText(this, "GCash Payment Info saved!", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+
+                        // Enable Confirm button
+                        btnConfirm.setEnabled(true);
+                        btnConfirm.setAlpha(1f);
+                    }))
+                    .addOnFailureListener(e -> Toast.makeText(this, "Failed to upload GCash image: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        });
+
+        dialog.show();
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri imageUri = data.getData();
-            try {
-                InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                gcashProofBase64 = encodeImageToBase64(bitmap);
-                Toast.makeText(this, "Proof of payment uploaded successfully", Toast.LENGTH_SHORT).show();
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == REQ_CODE_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
+            gcashImageUri = data.getData();
+            Toast.makeText(this, "Image selected.", Toast.LENGTH_SHORT).show();
         }
     }
-
-    private String encodeImageToBase64(Bitmap bitmap) {
-        if (bitmap == null) return "";
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
-        return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-    }
-
-    // ---------------- PICK UP DIALOG WITH QR --------------------
-
-    private void showPickUpDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View view = getLayoutInflater().inflate(R.layout.dialog_pickup, null);
-        builder.setView(view);
-
-        Spinner spinnerBranches = view.findViewById(R.id.spinnerBranches);
-        RadioGroup radioGroupTime = view.findViewById(R.id.radioGroupTime);
-        RadioButton radioExactTime = view.findViewById(R.id.radioExactTime);
-        Button btnPickTime = view.findViewById(R.id.btnPickTime);
-        Button btnConfirmPickup = view.findViewById(R.id.btnConfirmPickup);
-
-        String[] branches = {"Main Branch", "Downtown Branch", "Mall Branch"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerBranches.setAdapter(adapter);
-
-        final Calendar selectedTime = Calendar.getInstance();
-
-        radioGroupTime.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.radioExactTime) {
-                btnPickTime.setVisibility(View.VISIBLE);
-            } else {
-                btnPickTime.setVisibility(View.GONE);
-            }
-        });
-
-        btnPickTime.setOnClickListener(v -> {
-            int hour = selectedTime.get(Calendar.HOUR_OF_DAY);
-            int minute = selectedTime.get(Calendar.MINUTE);
-            TimePickerDialog timePickerDialog = new TimePickerDialog(this, (view1, hourOfDay, minute1) -> {
-                selectedTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                selectedTime.set(Calendar.MINUTE, minute1);
-                Toast.makeText(this, "Selected time: " + hourOfDay + ":" + String.format("%02d", minute1), Toast.LENGTH_SHORT).show();
-            }, hour, minute, false);
-            timePickerDialog.show();
-        });
-
-        AlertDialog dialog = builder.create();
-
-        btnConfirmPickup.setOnClickListener(v -> {
-            String branch = spinnerBranches.getSelectedItem().toString();
-            String time = radioExactTime.isChecked()
-                    ? String.format("%02d:%02d", selectedTime.get(Calendar.HOUR_OF_DAY), selectedTime.get(Calendar.MINUTE))
-                    : "ASAP";
-
-            int orderNumber = nextPickUpNumber;
-            nextPickUpNumber++;
-
-            showPickUpQRCode(orderNumber, branch, time);
-            dialog.dismiss();
-        });
-
-        dialog.show();
-    }
-
-    private void showPickUpQRCode(int orderNumber, String branch, String time) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View view = getLayoutInflater().inflate(R.layout.dialog_pickup_qr, null);
-
-        ImageView qrImage = view.findViewById(R.id.qrImage);
-        TextView txtInfo = view.findViewById(R.id.txtPickupInfo);
-        Button btnDone = view.findViewById(R.id.btnDone);
-
-        txtInfo.setText("Order Number: #" + orderNumber + "\nBranch: " + branch + "\nPick-Up Time: " + time);
-
-        try {
-            com.google.zxing.Writer writer = new com.google.zxing.qrcode.QRCodeWriter();
-            com.google.zxing.common.BitMatrix bitMatrix = writer.encode(
-                    "Order#" + orderNumber + "|" + branch + "|" + time,
-                    com.google.zxing.BarcodeFormat.QR_CODE,
-                    512, 512
-            );
-
-            Bitmap bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.RGB_565);
-            for (int x = 0; x < 512; x++) {
-                for (int y = 0; y < 512; y++) {
-                    bitmap.setPixel(x, y, bitMatrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
-                }
-            }
-            qrImage.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show();
-        }
-
-        AlertDialog dialog = builder.setView(view).create();
-        btnDone.setOnClickListener(v -> {
-            dialog.dismiss();
-            Intent intent = new Intent(CheckoutActivity.this, OrdersActivity.class);
-            startActivity(intent);
-            finish();
-        });
-
-        dialog.show();
-    }
-
-    // ---------------- RECEIPT -----------------------
-
     private void showReceiptPopup(List<String> items, double total, String paymentMethod) {
-        double vat = total * 0.12 / 1.12;
-        double subtotal = total - vat - 30;
+        // Safety checks
+        if (items == null) items = new ArrayList<>();
+        if (paymentMethod == null) paymentMethod = "N/A";
+        if (deliveryLocation == null) deliveryLocation = "";
+        if (gcashReferenceNumber == null) gcashReferenceNumber = "";
+        if (gcashProofDownloadUrl == null) gcashProofDownloadUrl = "";
 
+        // Use the locally computed subtotal and vat (these are already calculated in loadCart)
+        double localSubtotal = this.subtotal;
+        double localVat = this.vat;
+
+        // Build receipt string
         StringBuilder receiptBuilder = new StringBuilder();
         receiptBuilder.append("🧾  OFFICIAL RECEIPT\n\n");
         receiptBuilder.append("A4CSOFO FOOD SERVICES\n");
-        receiptBuilder.append(SHOP_LOCATION + "\n");
+        receiptBuilder.append("Bubukal Sta Cruz Laguna\n");
+        receiptBuilder.append("VAT Reg TIN: 123-456-789-000\n");
         receiptBuilder.append("--------------------------------------------\n");
-        receiptBuilder.append("ITEMS\n");
 
-        for (String item : items) {
-            receiptBuilder.append("• ").append(item).append("\n");
+        receiptBuilder.append("ITEMS\n");
+        if (items.isEmpty()) {
+            receiptBuilder.append("• No items\n");
+        } else {
+            for (String item : items) {
+                receiptBuilder.append("• ").append(item).append("\n");
+            }
         }
 
         receiptBuilder.append("--------------------------------------------\n");
-        receiptBuilder.append(String.format("Subtotal:        ₱%.2f\n", subtotal));
-        receiptBuilder.append(String.format("VAT (12%%):       ₱%.2f\n", vat));
-        receiptBuilder.append(String.format("Delivery Fee:    ₱%.2f\n", 30.00));
+        receiptBuilder.append(String.format("Subtotal:        ₱%.2f\n", localSubtotal));
+        receiptBuilder.append(String.format("VAT (12%%):       ₱%.2f\n", localVat));
+        receiptBuilder.append(String.format("Delivery Fee:    ₱%.2f\n", deliveryFee));
         receiptBuilder.append("--------------------------------------------\n");
         receiptBuilder.append(String.format("TOTAL DUE:       ₱%.2f\n", total));
         receiptBuilder.append("--------------------------------------------\n");
         receiptBuilder.append("Payment Method: " + paymentMethod + "\n");
 
-        if (!deliveryLocation.isEmpty())
-            receiptBuilder.append("Delivery Address: " + deliveryLocation + "\n");
+        if (!deliveryLocation.isEmpty()) receiptBuilder.append("Delivery Address: " + deliveryLocation + "\n");
+        if (!gcashReferenceNumber.isEmpty()) receiptBuilder.append("GCash Ref#: " + gcashReferenceNumber + "\n");
+        if (!gcashProofDownloadUrl.isEmpty()) receiptBuilder.append("GCash Proof URL: " + gcashProofDownloadUrl + "\n");
 
         receiptBuilder.append("Cashier: SYSTEM AUTO\n");
         receiptBuilder.append("Date/Time: " + java.text.DateFormat.getDateTimeInstance().format(new java.util.Date()) + "\n");
         receiptBuilder.append("--------------------------------------------\n");
         receiptBuilder.append("✅ THANK YOU FOR YOUR PURCHASE!\n");
 
+        // Show receipt dialog (non-cancelable to ensure user sees it)
         new AlertDialog.Builder(this)
                 .setTitle("Order Confirmed")
                 .setMessage(receiptBuilder.toString())
-                .setCancelable(false)
+                .setCancelable(false) // user must press OK
                 .setPositiveButton("OK", (dialog, which) -> {
-                    Intent intent = new Intent(CheckoutActivity.this, OrdersActivity.class);
-                    startActivity(intent);
-                    finish();
+                    // FIXED: Set result OK and finish
+                    setResult(RESULT_OK);
+                    finish(); // Babalik sa MainActivity
                 })
                 .show();
     }
-
-    // ---------------- CART ITEM CLASS ----------------------
-
-    public static class CartItem {
+    // ---------------- CartItem Model ----------------
+    private static class CartItem {
         private String name;
         private int quantity;
         private double price;
 
-        public CartItem() { }
-
-        public CartItem(String name, int quantity, double price) {
-            this.name = name;
-            this.quantity = quantity;
-            this.price = price;
-        }
-
+        public CartItem(String name, int quantity, double price) { this.name = name; this.quantity = quantity; this.price = price; }
         public String getName() { return name; }
         public int getQuantity() { return quantity; }
         public double getPrice() { return price; }
     }
 }
+
+

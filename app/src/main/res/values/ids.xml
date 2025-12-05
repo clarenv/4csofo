@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="tvEmptyState" type="id" />
+    <item name="menuOrdersLayout" type="id" />
 </resources>

@@ -3,81 +3,261 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bg_card"
     android:padding="16dp"
     android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_card"
     android:elevation="4dp">
 
-    <!-- Customer Name -->
-    <TextView
-        android:id="@+id/txtCustomer"
-        android:layout_width="wrap_content"
+    <!-- CUSTOMER INFO BOX -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Customer: John Doe"
-        android:textSize="16sp"
-        android:textColor="#222"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp"
+        android:elevation="2dp">
 
-    <!-- Items -->
-    <TextView
-        android:id="@+id/txtItems"
-        android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Customer:"
+                android:textColor="#222"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/txtCustomer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="John Doe"
+                android:textColor="#222"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Items:"
+                android:textColor="#222"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/txtItems"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Burger, Fries"
+                android:textColor="#222"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Total:"
+                android:textColor="#000"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/txtTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₱155.00"
+                android:textColor="#000"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- PAYMENT INFO BOX -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Items: Burger, Fries"
-        android:textSize="16sp"
-        android:textColor="#222"
-        android:layout_marginTop="4dp" />
+        android:orientation="vertical"
+        android:background="#F9F9F9"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp"
+        android:elevation="2dp">
 
-    <!-- Total -->
-    <TextView
-        android:id="@+id/txtTotal"
-        android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Payment:"
+                android:textColor="#555"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/txtPayment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GCash"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="GCash Info:"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:id="@+id/txtGcashInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="09171234567"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/qrImage"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/qr_gcash"
+            android:visibility="gone"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+    <!-- DELIVERY / PICKUP INFO BOX -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="₱155.00"
-        android:textColor="#000"
-        android:textStyle="bold"
-        android:textSize="16sp"
-        android:layout_marginTop="4dp" />
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:padding="12dp"
+        android:elevation="2dp">
 
-    <!-- Payment Method -->
-    <TextView
-        android:id="@+id/txtPayment"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Payment: GCash"
-        android:textColor="#555"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-    <!-- Status -->
-    <TextView
-        android:id="@+id/txtStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Status: Pending"
-        android:textColor="#008577"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginTop="4dp" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Status:"
+                android:textColor="#008577"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
 
-    <!-- Transaction Number -->
-    <TextView
-        android:id="@+id/txtTransaction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Transaction: TX123"
-        android:textColor="#555"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp" />
+            <TextView
+                android:id="@+id/txtStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pending"
+                android:textColor="#008577"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
 
-    <!-- QR Image -->
-    <ImageView
-        android:id="@+id/qrImage"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/qr_gcash"
-        android:visibility="gone"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="12dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Transaction:"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:id="@+id/txtTransaction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TX123"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Pickup Info:"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:id="@+id/txtPickupInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Store #1, 12:30 PM"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Delivery Location:"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+
+            <TextView
+                android:id="@+id/txtDeliveryLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bubukal, Santa Cruz"
+                android:textColor="#555"
+                android:textSize="14sp"/>
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

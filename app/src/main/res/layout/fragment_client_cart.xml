@@ -11,9 +11,7 @@
         android:orientation="vertical"
         android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="top"
-        android:layout_marginBottom="60dp">
+        android:layout_height="match_parent">
 
         <TextView
             android:id="@+id/tvCartTitle"
@@ -45,16 +43,6 @@
             android:layout_marginTop="12dp"/>
     </LinearLayout>
 
-    <!-- Bottom Navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNavigation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="@color/background_white"
-        app:menu="@menu/bottom_navigation_menu"
-        app:itemIconTint="@color/primary"
-        app:itemTextColor="@color/primary"
-        app:elevation="8dp" />
+    <!-- BottomNavigationView removed from layout -->
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,26 +1,26 @@
 package com.example.a4csofo;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageView;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
 import java.util.ArrayList;
 
-public class OrdersActivity extends AppCompatActivity {
+public class ClientOrdersFragment extends Fragment {
 
     private RecyclerView recyclerOrders;
     private OrdersAdapter ordersAdapter;
@@ -33,26 +33,25 @@ public class OrdersActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
 
-    private BottomNavigationView bottomNavigation;
-    private ImageView ivCartIcon;
+    public ClientOrdersFragment() { }
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_order);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
 
-        // Initialize views
-        recyclerOrders = findViewById(R.id.recyclerOrders);
-        progressBar = findViewById(R.id.progressBar);
-        emptyLayout = findViewById(R.id.emptyLayout);
-        txtEmptyMessage = findViewById(R.id.txtEmptyMessage);
-        bottomNavigation = findViewById(R.id.bottomNavigation);
-        ivCartIcon = findViewById(R.id.ivCartIcon); // <--- FIXED: initialize Cart Icon
+        View view = inflater.inflate(R.layout.fragment_client_orders, container, false);
+
+        recyclerOrders = view.findViewById(R.id.recyclerOrders);
+        progressBar = view.findViewById(R.id.progressBar);
+        emptyLayout = view.findViewById(R.id.emptyLayout);
+        txtEmptyMessage = view.findViewById(R.id.txtEmptyMessage);
 
         // Setup RecyclerView
-        recyclerOrders.setLayoutManager(new LinearLayoutManager(this));
+        recyclerOrders.setLayoutManager(new LinearLayoutManager(requireContext()));
         orderList = new ArrayList<>();
-        ordersAdapter = new OrdersAdapter(this, orderList);
+        ordersAdapter = new OrdersAdapter(requireContext(), orderList);
         recyclerOrders.setAdapter(ordersAdapter);
 
         // Firebase
@@ -62,40 +61,15 @@ public class OrdersActivity extends AppCompatActivity {
         if (currentUser == null) {
             emptyLayout.setVisibility(View.VISIBLE);
             txtEmptyMessage.setText("Please log in to see your orders.");
-            return;
+            return view;
         }
 
         ordersRef = FirebaseDatabase.getInstance().getReference("orders");
 
-        // Load orders and setup navigation
+        // Load orders
         loadUserOrders();
-        setupNavigation();
-    }
 
-    private void setupNavigation() {
-        bottomNavigation.setSelectedItemId(R.id.nav_orders);
-
-        bottomNavigation.setOnItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_home) {
-                startActivity(new Intent(OrdersActivity.this, MainActivity.class));
-                return true;
-            } else if (itemId == R.id.nav_cart) {
-                startActivity(new Intent(OrdersActivity.this, CartActivity.class));
-                return true;
-            } else if (itemId == R.id.nav_orders) {
-                return true;
-            } else if (itemId == R.id.nav_profile) {
-                startActivity(new Intent(OrdersActivity.this, ProfileActivity.class));
-                return true;
-            }
-            return false;
-        });
-
-        // Cart icon click listener
-        ivCartIcon.setOnClickListener(v ->
-                startActivity(new Intent(OrdersActivity.this, CartActivity.class))
-        );
+        return view;
     }
 
     private void loadUserOrders() {
