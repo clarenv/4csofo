@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,7 +43,7 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
         // Total price
         holder.txtTotal.setText(order.getFormattedTotal());
 
-        // Payment method
+        // Payment method → only the value
         holder.txtPayment.setText(order.getPaymentText());
 
         // Status
@@ -51,23 +52,25 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
         // Transaction number
         holder.txtTransaction.setText(order.getTransactionNumber());
 
-        // Items
-        holder.txtItems.setText("Items: " + order.getItemsAsString());
+        // Items → only the value
+        holder.txtItems.setText(order.getItemsAsString());
 
-        // Pickup info
-        if ("pickup".equals(order.getOrderType())) {
+        // Pickup info → only the value
+        if ("pickup".equalsIgnoreCase(order.getOrderType())) {
             holder.txtPickupInfo.setVisibility(View.VISIBLE);
-            holder.txtPickupInfo.setText("Pickup: " + order.getPickupBranch() + " at " + order.getPickupTime());
+            holder.txtPickupInfo.setText(order.getPickupBranch() + " at " + order.getPickupTime());
         } else {
             holder.txtPickupInfo.setVisibility(View.GONE);
         }
 
-        // GCash info
+        // GCash info → only show if payment method is GCash
         if ("GCash".equalsIgnoreCase(order.getPaymentMethod())) {
             holder.txtGcashInfo.setVisibility(View.VISIBLE);
-            holder.txtGcashInfo.setText("GCash Ref: " + order.getGcashReferenceNumber());
+            holder.txtGcashInfo.setText(order.getGcashReferenceNumber());
+            holder.qrImage.setVisibility(View.VISIBLE);
         } else {
             holder.txtGcashInfo.setVisibility(View.GONE);
+            holder.qrImage.setVisibility(View.GONE);
         }
 
         // 🔥 CLICK LISTENER FOR DELIVERING ORDERS TO OPEN MAP
@@ -94,6 +97,7 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
         TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction, txtItems, txtPickupInfo, txtGcashInfo;
+        ImageView qrImage;
 
         public OrderViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -103,10 +107,9 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
             txtStatus = itemView.findViewById(R.id.txtStatus);
             txtTransaction = itemView.findViewById(R.id.txtTransaction);
             txtItems = itemView.findViewById(R.id.txtItems);
-
-            // NEW FIELDS
             txtPickupInfo = itemView.findViewById(R.id.txtPickupInfo);
             txtGcashInfo = itemView.findViewById(R.id.txtGcashInfo);
+            qrImage = itemView.findViewById(R.id.qrImage); // NEW: QR Image for GCash
         }
     }
 }

@@ -102,7 +102,7 @@ public class OrderModel {
     }
 
     public String getPaymentText() {
-        return "Payment: " + getPaymentMethod();
+        return getPaymentMethod();
     }
 
     public String getItemsAsString() {
