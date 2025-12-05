@@ -123,75 +123,109 @@ public class ClientHomeFragment extends Fragment {
         // NEW: Category button click listeners
         setupCategoryButtons();
 
+        // Set initial state (All)
+        resetCategoryButtons();
+        highlightCategoryButton("All"); // no button highlight for "All", but this keeps UI consistent
+
         return view;
     }
 
     // NEW: Setup category button listeners
+    // NEW: Setup category button listeners (FIXED)
+    // -------------------------------
+// CATEGORY BUTTONS SETUP
+// -------------------------------
     private void setupCategoryButtons() {
-        // Main Dish button
+
         btnMainDish.setOnClickListener(v -> filterByCategory("Main Dish"));
-
-        // Drinks button
         btnDrinks.setOnClickListener(v -> filterByCategory("Drinks"));
-
-        // Snacks button
         btnSnacks.setOnClickListener(v -> filterByCategory("Snacks"));
+        btnDesserts.setOnClickListener(v -> filterByCategory("Dessert")); // (Dessert no 's')
 
-        // Desserts button
-        btnDesserts.setOnClickListener(v -> filterByCategory("Desserts"));
     }
 
-    // NEW: Filter by category
+
+    // -------------------------------
+// FILTER BY CATEGORY
+// -------------------------------
     private void filterByCategory(String category) {
         currentCategory = category;
 
-        // Reset all button appearances
+        // Reset all buttons to default
         resetCategoryButtons();
 
-        // Highlight selected button
+        // Highlight the selected button
         highlightCategoryButton(category);
 
-        // Apply category filter
+        // Apply filters with current search text
         String searchQuery = searchEditText.getText().toString();
         applyFilters(searchQuery, category);
     }
 
-    // NEW: Reset all category buttons to default appearance
+
+    // -------------------------------
+// RESET ALL CATEGORY BUTTONS
+// -------------------------------
     private void resetCategoryButtons() {
-        // Reset all buttons (you can customize the appearance)
+
         btnMainDish.setAlpha(0.8f);
         btnDrinks.setAlpha(0.8f);
         btnSnacks.setAlpha(0.8f);
         btnDesserts.setAlpha(0.8f);
+
+        btnMainDish.setScaleX(1f); btnMainDish.setScaleY(1f);
+        btnDrinks.setScaleX(1f);   btnDrinks.setScaleY(1f);
+        btnSnacks.setScaleX(1f);   btnSnacks.setScaleY(1f);
+        btnDesserts.setScaleX(1f); btnDesserts.setScaleY(1f);
     }
 
-    // NEW: Highlight selected category button
+
+    // -------------------------------
+// HIGHLIGHT SELECTED CATEGORY BUTTON
+// -------------------------------
     private void highlightCategoryButton(String category) {
+
         switch (category) {
+
             case "Main Dish":
                 btnMainDish.setAlpha(1.0f);
+                btnMainDish.setScaleX(1.08f);
+                btnMainDish.setScaleY(1.08f);
                 break;
+
             case "Drinks":
                 btnDrinks.setAlpha(1.0f);
+                btnDrinks.setScaleX(1.08f);
+                btnDrinks.setScaleY(1.08f);
                 break;
+
             case "Snacks":
                 btnSnacks.setAlpha(1.0f);
+                btnSnacks.setScaleX(1.08f);
+                btnSnacks.setScaleY(1.08f);
                 break;
+
             case "Desserts":
                 btnDesserts.setAlpha(1.0f);
+                btnDesserts.setScaleX(1.08f);
+                btnDesserts.setScaleY(1.08f);
+                break;
+
+            default:
                 break;
         }
     }
+
 
     // NEW: Apply both search and category filters
     private void applyFilters(String searchQuery, String category) {
         filteredFoodList.clear();
 
         for (FoodItem food : foodList) {
-            boolean matchesSearch = searchQuery.isEmpty() ||
+            boolean matchesSearch = searchQuery == null || searchQuery.isEmpty() ||
                     (food.name != null && food.name.toLowerCase().contains(searchQuery.toLowerCase()));
 
-            boolean matchesCategory = category.equals("All") ||
+            boolean matchesCategory = category == null || category.equals("All") ||
                     (food.category != null && food.category.equals(category));
 
             if (matchesSearch && matchesCategory) {
@@ -201,10 +235,11 @@ public class ClientHomeFragment extends Fragment {
 
         foodAdapter.updateList(filteredFoodList);
 
-        // Show message if no items found
+        // Show message if no items found (only show for user feedback)
         if (filteredFoodList.isEmpty()) {
+            String q = (searchQuery == null) ? "" : searchQuery;
             Toast.makeText(requireContext(),
-                    "No items found for '" + searchQuery + "' in " + category,
+                    "No items found for '" + q + "' in " + category,
                     Toast.LENGTH_SHORT).show();
         }
     }

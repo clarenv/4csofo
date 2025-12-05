@@ -5,9 +5,9 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -25,9 +25,11 @@ import java.util.Map;
 
 public class ClientCartFragment extends Fragment {
 
-    private ListView listViewCart;
+    private LinearLayout containerCartItems;
+    private LinearLayout emptyCartView;
     private Button btnProceedCheckout;
-    private ArrayList<String> cartItems;
+
+    private ArrayList<CartFoodItem> cartItems;
     private ArrayList<String> cartKeys;
 
     private FirebaseAuth auth;
@@ -45,7 +47,8 @@ public class ClientCartFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_client_cart, container, false);
 
         // Initialize views
-        listViewCart = view.findViewById(R.id.listViewCart);
+        containerCartItems = view.findViewById(R.id.containerCartItems);
+        emptyCartView = view.findViewById(R.id.emptyCartView);
         btnProceedCheckout = view.findViewById(R.id.btnProceedCheckout);
 
         // Initialize Firebase
@@ -58,12 +61,9 @@ public class ClientCartFragment extends Fragment {
             return view;
         }
 
-        // Initialize cart lists and adapter
+        // Initialize cart lists
         cartItems = new ArrayList<>();
         cartKeys = new ArrayList<>();
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_list_item_1, cartItems);
-        listViewCart.setAdapter(adapter);
 
         cartRef = FirebaseDatabase.getInstance()
                 .getReference("carts")
@@ -75,6 +75,7 @@ public class ClientCartFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartItems.clear();
                 cartKeys.clear();
+                containerCartItems.removeAllViews();
 
                 Map<String, Integer> itemQuantityMap = new HashMap<>();
                 Map<String, Double> itemPriceMap = new HashMap<>();
@@ -92,17 +93,51 @@ public class ClientCartFragment extends Fragment {
                     }
                 }
 
-                for (String name : itemQuantityMap.keySet()) {
-                    int qty = itemQuantityMap.get(name);
-                    double price = itemPriceMap.get(name);
-                    cartItems.add(name + " x" + qty + " - ₱" + (price * qty));
-                    cartKeys.add(itemKeysMap.get(name));
-                }
+                if (itemQuantityMap.isEmpty()) {
+                    emptyCartView.setVisibility(View.VISIBLE);
+                } else {
+                    emptyCartView.setVisibility(View.GONE);
 
-                adapter.notifyDataSetChanged();
+                    for (String name : itemQuantityMap.keySet()) {
+                        int qty = itemQuantityMap.get(name);
+                        double price = itemPriceMap.get(name);
+                        String key = itemKeysMap.get(name);
 
-                if (cartItems.isEmpty()) {
-                    Toast.makeText(requireContext(), "Your cart is empty", Toast.LENGTH_SHORT).show();
+                        CartFoodItem item = new CartFoodItem();
+                        item.name = name;
+                        item.price = price;
+                        item.quantity = qty;
+                        cartItems.add(item);
+                        cartKeys.add(key);
+
+                        // Create item view dynamically
+                        View itemView = LayoutInflater.from(requireContext())
+                                .inflate(R.layout.cart_item_view, containerCartItems, false);
+                        TextView tvName = itemView.findViewById(R.id.tvItemName);
+                        TextView tvPrice = itemView.findViewById(R.id.tvItemPrice);
+
+                        tvName.setText(name + " x" + qty);
+                        tvPrice.setText("₱" + (price * qty));
+
+                        // Handle long click to remove
+                        itemView.setOnLongClickListener(v -> {
+                            new AlertDialog.Builder(requireContext())
+                                    .setTitle("Remove Item")
+                                    .setMessage("Do you want to remove " + name + " from your cart?")
+                                    .setPositiveButton("Yes", (dialog, which) -> {
+                                        cartRef.child(key).removeValue()
+                                                .addOnSuccessListener(aVoid ->
+                                                        Toast.makeText(requireContext(), name + " removed from cart", Toast.LENGTH_SHORT).show())
+                                                .addOnFailureListener(e ->
+                                                        Toast.makeText(requireContext(), "Failed to remove item: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                    })
+                                    .setNegativeButton("No", null)
+                                    .show();
+                            return true;
+                        });
+
+                        containerCartItems.addView(itemView);
+                    }
                 }
             }
 
@@ -110,25 +145,6 @@ public class ClientCartFragment extends Fragment {
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(requireContext(), "Failed to load cart: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        });
-
-        // Remove item on long click
-        listViewCart.setOnItemLongClickListener((parent, v, position, id) -> {
-            String itemName = cartItems.get(position);
-            String key = cartKeys.get(position);
-
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("Remove Item")
-                    .setMessage("Do you want to remove " + itemName + " from your cart?")
-                    .setPositiveButton("Yes", (dialog, which) -> cartRef.child(key).removeValue()
-                            .addOnSuccessListener(aVoid ->
-                                    Toast.makeText(requireContext(), itemName + " removed from cart", Toast.LENGTH_SHORT).show())
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(requireContext(), "Failed to remove item: " + e.getMessage(), Toast.LENGTH_SHORT).show()))
-                    .setNegativeButton("No", null)
-                    .show();
-
-            return true;
         });
 
         // Proceed to checkout

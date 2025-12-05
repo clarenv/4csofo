@@ -26,6 +26,7 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import java.io.IOException;
 import java.util.*;
+import androidx.annotation.Nullable;
 
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -64,6 +65,10 @@ public class CheckoutActivity extends AppCompatActivity {
     private String pickupBranch = "";
     private String pickupTime = "";
     private String orderType = "delivery"; // "delivery" or "pickup"
+    private ImageView imgPreview;
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -568,43 +573,64 @@ public class CheckoutActivity extends AppCompatActivity {
         RadioButton rbSaved = view.findViewById(R.id.rbSavedAddress);
         RadioButton rbManual = view.findViewById(R.id.rbManualInput);
         EditText edtManual = view.findViewById(R.id.edtManualAddress);
-        ImageView imgPreview = view.findViewById(R.id.imgPreview);
+
+        imgPreview = view.findViewById(R.id.imgPreview);
         EditText edtRef = view.findViewById(R.id.edtReferenceNumber);
+
         Button btnSelect = view.findViewById(R.id.btnChooseImage);
         Button btnSave = view.findViewById(R.id.btnSavePayment);
 
         edtManual.setEnabled(false);
         builder.setView(view);
+
         AlertDialog dialog = builder.create();
 
         FirebaseUser user = auth.getCurrentUser();
         if (user != null) {
-            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users")
-                    .child(user.getUid()).child("address");
+            DatabaseReference userRef = FirebaseDatabase.getInstance()
+                    .getReference("users")
+                    .child(user.getUid())
+                    .child("address");
+
             userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
                     String saved = snapshot.getValue(String.class);
                     if (saved != null && !saved.isEmpty()) {
                         rbSaved.setText("Saved Address: " + saved);
                         rbSaved.setEnabled(true);
-                    } else rbSaved.setEnabled(false);
+                    } else {
+                        rbSaved.setEnabled(false);
+                    }
                 }
-                @Override public void onCancelled(@NonNull DatabaseError error) {}
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {}
             });
         }
 
-        // Location radio buttons
-        rbCurrent.setOnClickListener(v -> { edtManual.setEnabled(false); orderType = "delivery"; requestCurrentLocation(); });
+        // ===============================================================
+        //            LOCATION SECTION (Current / Saved / Manual)
+        // ===============================================================
+        rbCurrent.setOnClickListener(v -> {
+            edtManual.setEnabled(false);
+            orderType = "delivery";
+            requestCurrentLocation();
+        });
+
         rbSaved.setOnClickListener(v -> {
             edtManual.setEnabled(false);
             orderType = "delivery";
-            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ","");
+
+            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ", "");
             validateDeliveryLocation(deliveryLocation);
         });
+
         rbManual.setOnClickListener(v -> {
             edtManual.setEnabled(true);
             edtManual.requestFocus();
             orderType = "delivery";
+
             deliveryLocation = edtManual.getText().toString();
             validateDeliveryLocation(deliveryLocation);
         });
@@ -620,64 +646,102 @@ public class CheckoutActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        // Select GCash screenshot
+        // ===============================================================
+        //               QR IMAGE – CLICK TO ENLARGE
+        // ===============================================================
+        qrImage.setOnClickListener(v -> {
+            AlertDialog.Builder builderZoom = new AlertDialog.Builder(CheckoutActivity.this);
+            ImageView zoomImg = new ImageView(CheckoutActivity.this);
+            zoomImg.setImageDrawable(qrImage.getDrawable());
+
+            builderZoom.setView(zoomImg);
+            builderZoom.setPositiveButton("Close", (d, w) -> d.dismiss());
+            builderZoom.show();
+        });
+
+        // ===============================================================
+        //                SELECT IMAGE (SCREENSHOT)
+        // ===============================================================
         btnSelect.setOnClickListener(v -> {
             Intent pickIntent = new Intent(Intent.ACTION_PICK);
             pickIntent.setType("image/*");
             startActivityForResult(pickIntent, REQ_CODE_PICK_IMAGE);
         });
 
-        // Save GCash payment info
+        // If meron nang napiling image, i-preview agad
+        if (gcashImageUri != null) {
+            imgPreview.setImageURI(gcashImageUri);
+            imgPreview.setVisibility(View.VISIBLE);
+        }
+
+        // ===============================================================
+        //                     SAVE PAYMENT
+        // ===============================================================
         btnSave.setOnClickListener(v -> {
-            // For GCash, require valid delivery location (we need delivery).
+
             if (deliveryLocation == null || deliveryLocation.isEmpty()) {
-                Toast.makeText(this, "Please select a delivery location first.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Please select delivery location.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             if (!isValidBarangay(deliveryLocation)) {
-                Toast.makeText(this, "Delivery location not allowed for checkout.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Delivery not allowed for this barangay.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             gcashReferenceNumber = edtRef.getText().toString().trim();
             if (gcashReferenceNumber.isEmpty()) {
-                Toast.makeText(this, "Enter GCash reference number.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Enter reference number.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             if (gcashImageUri == null) {
-                Toast.makeText(this, "Please upload GCash screenshot.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please upload payment screenshot.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Upload GCash image to Firebase Storage
-            StorageReference storageRef = FirebaseStorage.getInstance().getReference("gcash_proofs/" + System.currentTimeMillis() + ".jpg");
-            storageRef.putFile(gcashImageUri)
-                    .addOnSuccessListener(taskSnapshot -> storageRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                        gcashProofDownloadUrl = uri.toString();
-                        Toast.makeText(this, "GCash Payment Info saved!", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
+            // Upload to Firebase Storage
+            StorageReference ref = FirebaseStorage.getInstance()
+                    .getReference("gcash_proofs/" + System.currentTimeMillis() + ".jpg");
 
-                        // Enable Confirm button
-                        btnConfirm.setEnabled(true);
-                        btnConfirm.setAlpha(1f);
-                    }))
-                    .addOnFailureListener(e -> Toast.makeText(this, "Failed to upload GCash image: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            ref.putFile(gcashImageUri)
+                    .addOnSuccessListener(taskSnapshot ->
+                            ref.getDownloadUrl().addOnSuccessListener(uri -> {
+
+                                gcashProofDownloadUrl = uri.toString();
+
+                                Toast.makeText(this, "GCash payment saved!", Toast.LENGTH_LONG).show();
+
+                                btnConfirm.setEnabled(true);
+                                btnConfirm.setAlpha(1f);
+
+                                dialog.dismiss();
+                            })
+                    )
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                    );
         });
 
         dialog.show();
     }
 
 
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == REQ_CODE_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
             gcashImageUri = data.getData();
-            Toast.makeText(this, "Image selected.", Toast.LENGTH_SHORT).show();
+
+            if (imgPreview != null) {
+                imgPreview.setImageURI(gcashImageUri);
+                imgPreview.setVisibility(View.VISIBLE);
+            }
         }
     }
+
     private void showReceiptPopup(List<String> items, double total, String paymentMethod) {
         // Safety checks
         if (items == null) items = new ArrayList<>();
