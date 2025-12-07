@@ -1,11 +1,15 @@
 package com.example.a4csofo;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,7 +39,7 @@ public class ClientCartFragment extends Fragment {
     private FirebaseAuth auth;
     private DatabaseReference cartRef;
 
-    public ClientCartFragment() { }
+    public ClientCartFragment() {}
 
     @Nullable
     @Override
@@ -65,85 +69,112 @@ public class ClientCartFragment extends Fragment {
                 .getReference("carts")
                 .child(currentUser.getUid());
 
+        // LOAD CART ITEMS
         cartRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
 
-                if (!isAdded()) return; // 🛠 PREVENT CRASH
+                if (!isAdded()) return;
 
                 cartItems.clear();
                 cartKeys.clear();
                 containerCartItems.removeAllViews();
 
-                Map<String, Integer> itemQuantityMap = new HashMap<>();
-                Map<String, Double> itemPriceMap = new HashMap<>();
-                Map<String, String> itemKeysMap = new HashMap<>();
+                Map<String, Integer> qtyMap = new HashMap<>();
+                Map<String, Double> priceMap = new HashMap<>();
+                Map<String, String> imageMap = new HashMap<>();
+                Map<String, String> keyMap = new HashMap<>();
 
                 for (DataSnapshot data : snapshot.getChildren()) {
                     CartFoodItem food = data.getValue(CartFoodItem.class);
                     if (food != null) {
 
-                        itemQuantityMap.put(
-                                food.name,
-                                itemQuantityMap.getOrDefault(food.name, 0) + food.quantity
-                        );
+                        qtyMap.put(food.name, qtyMap.getOrDefault(food.name, 0) + food.quantity);
 
-                        if (!itemPriceMap.containsKey(food.name)) {
-                            itemPriceMap.put(food.name, food.price);
-                            itemKeysMap.put(food.name, data.getKey());
+                        if (!priceMap.containsKey(food.name)) {
+                            priceMap.put(food.name, food.price);
+                            keyMap.put(food.name, data.getKey());
+                            imageMap.put(food.name, food.base64Image);
                         }
                     }
                 }
 
-                if (itemQuantityMap.isEmpty()) {
+                if (qtyMap.isEmpty()) {
                     emptyCartView.setVisibility(View.VISIBLE);
                 } else {
                     emptyCartView.setVisibility(View.GONE);
 
-                    for (String name : itemQuantityMap.keySet()) {
+                    for (String name : qtyMap.keySet()) {
 
-                        int qty = itemQuantityMap.get(name);
-                        double price = itemPriceMap.get(name);
-                        String key = itemKeysMap.get(name);
+                        int qty = qtyMap.get(name);
+                        double price = priceMap.get(name);
+                        String key = keyMap.get(name);
+                        String base64 = imageMap.get(name);
 
-                        CartFoodItem item = new CartFoodItem(name, price, qty);
+                        CartFoodItem item = new CartFoodItem(name, price, qty, base64);
                         cartItems.add(item);
                         cartKeys.add(key);
 
-                        // use getContext() not requireContext() to prevent crash
                         View itemView = LayoutInflater.from(getContext())
                                 .inflate(R.layout.cart_item_view, containerCartItems, false);
 
+                        ImageView imgFood = itemView.findViewById(R.id.imgItem);
                         TextView tvName = itemView.findViewById(R.id.tvItemName);
                         TextView tvPrice = itemView.findViewById(R.id.tvItemPrice);
 
                         tvName.setText(name + " x" + qty);
-                        tvPrice.setText("₱" + (price * qty));
+                        tvPrice.setText("₱" + String.format("%.2f", price * qty));
 
-                        itemView.setOnLongClickListener(v -> {
+                        // DISPLAY BASE64 IMAGE
+                        if (base64 != null && !base64.isEmpty()) {
+                            Bitmap bmp = base64ToBitmap(base64);
+                            if (bmp != null) imgFood.setImageBitmap(bmp);
+                        }
 
-                            if (!isAdded()) return false;
+                        // 👉 INSERTED QUANTITY UI CODE HERE
+                        Button btnMinus = itemView.findViewById(R.id.btnMinus);
+                        Button btnAdd = itemView.findViewById(R.id.btnAdd);
+                        TextView tvQty = itemView.findViewById(R.id.tvQty);
 
-                            new AlertDialog.Builder(requireActivity())
-                                    .setTitle("Remove Item")
-                                    .setMessage("Do you want to remove " + name + " from your cart?")
-                                    .setPositiveButton("Yes", (dialog, which) -> {
-                                        cartRef.child(key).removeValue()
-                                                .addOnSuccessListener(aVoid -> {
-                                                    if (isAdded())
-                                                        Toast.makeText(getContext(),
-                                                                name + " removed", Toast.LENGTH_SHORT).show();
-                                                })
-                                                .addOnFailureListener(e -> {
-                                                    if (isAdded())
-                                                        Toast.makeText(getContext(),
-                                                                "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                                });
-                                    })
-                                    .setNegativeButton("No", null)
-                                    .show();
-                            return true;
+                        tvQty.setText(String.valueOf(qty));
+
+                        // ADD BUTTON
+                        btnAdd.setOnClickListener(v -> {
+                            int currentQty = Integer.parseInt(tvQty.getText().toString());
+                            currentQty++;
+
+                            tvQty.setText(String.valueOf(currentQty));
+                            tvName.setText(name + " x" + currentQty);
+                            tvPrice.setText("₱" + String.format("%.2f", price * currentQty));
+
+                            cartRef.child(key).child("quantity").setValue(currentQty);
                         });
+
+                        // MINUS BUTTON
+                        btnMinus.setOnClickListener(v -> {
+                            int currentQty = Integer.parseInt(tvQty.getText().toString());
+
+                            if (currentQty > 1) {
+                                currentQty--;
+
+                                tvQty.setText(String.valueOf(currentQty));
+                                tvName.setText(name + " x" + currentQty);
+                                tvPrice.setText("₱" + String.format("%.2f", price * currentQty));
+
+                                cartRef.child(key).child("quantity").setValue(currentQty);
+
+                            } else {
+                                new AlertDialog.Builder(requireActivity())
+                                        .setTitle("Remove Item")
+                                        .setMessage("Remove " + name + " from cart?")
+                                        .setPositiveButton("Yes", (dialog, which) -> {
+                                            cartRef.child(key).removeValue();
+                                        })
+                                        .setNegativeButton("No", null)
+                                        .show();
+                            }
+                        });
+                        // END OF INSERTED CODE
 
                         containerCartItems.addView(itemView);
                     }
@@ -165,24 +196,34 @@ public class ClientCartFragment extends Fragment {
                 return;
             }
 
-            startActivity(new Intent(getActivity(), CheckoutActivity.class));
+            startActivity(new Intent(requireActivity(), CheckoutActivity.class));
         });
 
         return view;
     }
 
-    // FINAL SHARED MODEL
+    private Bitmap base64ToBitmap(String base64) {
+        try {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static class CartFoodItem {
         public String name;
         public double price;
         public int quantity;
+        public String base64Image;
 
         public CartFoodItem() {}
 
-        public CartFoodItem(String name, double price, int quantity) {
+        public CartFoodItem(String name, double price, int quantity, String base64Image) {
             this.name = name;
             this.price = price;
             this.quantity = quantity;
+            this.base64Image = base64Image;
         }
     }
 }

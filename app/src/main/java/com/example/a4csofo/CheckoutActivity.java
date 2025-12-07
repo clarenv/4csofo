@@ -68,8 +68,6 @@ public class CheckoutActivity extends AppCompatActivity {
     private ImageView imgPreview;
 
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,11 +103,9 @@ public class CheckoutActivity extends AppCompatActivity {
                     showGcashCombinedDialog();
                     btnConfirm.setEnabled(false);
                     btnConfirm.setAlpha(0.5f);
-                }
-                else if (paymentText.contains("cash")) {
+                } else if (paymentText.contains("cash")) {
                     showDeliveryLocationDialog();
-                }
-                else if (paymentText.contains("pick")) {
+                } else if (paymentText.contains("pick")) {
                     // Fix: This now works for "Pick Up", "Pick-up", "PICK UP", etc.
                     showPickupOptionsDialog();
                 }
@@ -120,36 +116,27 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private void loadCartFromFirebase() {
         FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) {
-            Toast.makeText(this, "Please log in to view your cart", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        if (currentUser == null) return;
 
         cartRef = FirebaseDatabase.getInstance().getReference("carts").child(currentUser.getUid());
+
         cartRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartList.clear();
 
-                // 🔹 Merge items by name
-                HashMap<String, CartItem> mergedItems = new HashMap<>();
-
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                    AdminMenuItemsFragment.FoodItem food = itemSnapshot.getValue(AdminMenuItemsFragment.FoodItem.class);
-                    if (food != null) {
-                        if (mergedItems.containsKey(food.name)) {
-                            // Add quantity
-                            CartItem existing = mergedItems.get(food.name);
-                            mergedItems.put(food.name, new CartItem(food.name, existing.getQuantity() + 1, food.price));
-                        } else {
-                            mergedItems.put(food.name, new CartItem(food.name, 1, food.price));
-                        }
+                    // Get item name, price, quantity
+                    String name = itemSnapshot.child("name").getValue(String.class);
+                    Double price = itemSnapshot.child("price").getValue(Double.class);
+                    Long qty = itemSnapshot.child("quantity").getValue(Long.class);
+
+                    if (name != null && price != null && qty != null) {
+                        cartList.add(new CartItem(name, qty.intValue(), price));
                     }
                 }
 
-                cartList.addAll(mergedItems.values());
-                loadCart();
+                loadCart(); // Display after retrieving
             }
 
             @Override
@@ -164,6 +151,7 @@ public class CheckoutActivity extends AppCompatActivity {
         subtotal = 0;
 
         LayoutInflater inflater = LayoutInflater.from(this);
+
         for (CartItem item : cartList) {
             View itemView = inflater.inflate(R.layout.item_cart_checkout, cartContainer, false);
 
@@ -172,13 +160,22 @@ public class CheckoutActivity extends AppCompatActivity {
             TextView txtPrice = itemView.findViewById(R.id.txtItemPrice);
 
             txtName.setText(item.getName());
-            txtQty.setText("x" + item.getQuantity());
-            txtPrice.setText("₱" + String.format("%.2f", item.getPrice() * item.getQuantity()));
+            txtQty.setText(String.valueOf(item.getQuantity())); // quantity from Firebase
+            txtPrice.setText("₱" + String.format("%.2f", item.getQuantity() * item.getPrice()));
 
-            subtotal += item.getPrice() * item.getQuantity();
             cartContainer.addView(itemView);
+
+            subtotal += item.getQuantity() * item.getPrice();
         }
 
+        updateTotals();
+    }
+
+    private void updateTotals() {
+        subtotal = 0;
+        for (CartItem item : cartList) {
+            subtotal += item.getQuantity() * item.getPrice();
+        }
         vat = subtotal * 0.12;
         total = subtotal + vat + deliveryFee;
 
@@ -187,6 +184,7 @@ public class CheckoutActivity extends AppCompatActivity {
         txtDelivery.setText("₱" + String.format("%.2f", deliveryFee));
         txtTotal.setText("₱" + String.format("%.2f", total));
     }
+
 
 
     private void confirmOrder() {
@@ -333,12 +331,17 @@ public class CheckoutActivity extends AppCompatActivity {
             DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users")
                     .child(user.getUid()).child("address");
             userRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override public void onDataChange(@NonNull DataSnapshot snapshot) {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
                     String saved = snapshot.getValue(String.class);
-                    if (saved != null && !saved.isEmpty()) rbSaved.setText("Saved Address: " + saved);
+                    if (saved != null && !saved.isEmpty())
+                        rbSaved.setText("Saved Address: " + saved);
                     else rbSaved.setEnabled(false);
                 }
-                @Override public void onCancelled(@NonNull DatabaseError error) {}
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                }
             });
         }
 
@@ -351,7 +354,7 @@ public class CheckoutActivity extends AppCompatActivity {
         rbSaved.setOnClickListener(v -> {
             edtManual.setEnabled(false);
             orderType = "delivery";
-            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ","");
+            deliveryLocation = rbSaved.getText().toString().replace("Saved Address: ", "");
             validateDeliveryLocation(deliveryLocation);
         });
 
@@ -364,13 +367,26 @@ public class CheckoutActivity extends AppCompatActivity {
         });
 
         edtManual.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { if (rbManual.isChecked()) { deliveryLocation = s.toString(); validateDeliveryLocation(deliveryLocation); } }
-            @Override public void afterTextChanged(Editable s) {}
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (rbManual.isChecked()) {
+                    deliveryLocation = s.toString();
+                    validateDeliveryLocation(deliveryLocation);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         builder.setPositiveButton("Save", (dialog, which) -> {
-            if (!deliveryLocation.isEmpty()) Toast.makeText(this, "Delivery location saved!", Toast.LENGTH_SHORT).show();
+            if (!deliveryLocation.isEmpty())
+                Toast.makeText(this, "Delivery location saved!", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
@@ -424,7 +440,10 @@ public class CheckoutActivity extends AppCompatActivity {
                             String province = safeTrim(a.getAdminArea());
                             String feature = safeTrim(a.getFeatureName());
                             String addressLine = "";
-                            try { addressLine = a.getAddressLine(0); } catch (Exception ignored) {}
+                            try {
+                                addressLine = a.getAddressLine(0);
+                            } catch (Exception ignored) {
+                            }
 
                             // If subLocality empty, use featureName or try to extract from addressLine by matching allowed barangays
                             if (isEmpty(barangay)) {
@@ -479,14 +498,20 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isEmpty(String s) { return s == null || s.trim().isEmpty(); }
-    private String safeTrim(String s) { return s == null ? "" : s.trim(); }
+    private boolean isEmpty(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private String safeTrim(String s) {
+        return s == null ? "" : s.trim();
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == LOCATION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) requestCurrentLocation();
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                requestCurrentLocation();
             else Toast.makeText(this, "Location permission denied.", Toast.LENGTH_SHORT).show();
         }
     }
@@ -605,7 +630,8 @@ public class CheckoutActivity extends AppCompatActivity {
                 }
 
                 @Override
-                public void onCancelled(@NonNull DatabaseError error) {}
+                public void onCancelled(@NonNull DatabaseError error) {
+                }
             });
         }
 
@@ -636,14 +662,21 @@ public class CheckoutActivity extends AppCompatActivity {
         });
 
         edtManual.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (rbManual.isChecked()) {
                     deliveryLocation = s.toString();
                     validateDeliveryLocation(deliveryLocation);
                 }
             }
-            @Override public void afterTextChanged(Editable s) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         // ===============================================================
@@ -727,7 +760,6 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
 
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -780,9 +812,12 @@ public class CheckoutActivity extends AppCompatActivity {
         receiptBuilder.append("--------------------------------------------\n");
         receiptBuilder.append("Payment Method: " + paymentMethod + "\n");
 
-        if (!deliveryLocation.isEmpty()) receiptBuilder.append("Delivery Address: " + deliveryLocation + "\n");
-        if (!gcashReferenceNumber.isEmpty()) receiptBuilder.append("GCash Ref#: " + gcashReferenceNumber + "\n");
-        if (!gcashProofDownloadUrl.isEmpty()) receiptBuilder.append("GCash Proof URL: " + gcashProofDownloadUrl + "\n");
+        if (!deliveryLocation.isEmpty())
+            receiptBuilder.append("Delivery Address: " + deliveryLocation + "\n");
+        if (!gcashReferenceNumber.isEmpty())
+            receiptBuilder.append("GCash Ref#: " + gcashReferenceNumber + "\n");
+        if (!gcashProofDownloadUrl.isEmpty())
+            receiptBuilder.append("GCash Proof URL: " + gcashProofDownloadUrl + "\n");
 
         receiptBuilder.append("Cashier: SYSTEM AUTO\n");
         receiptBuilder.append("Date/Time: " + java.text.DateFormat.getDateTimeInstance().format(new java.util.Date()) + "\n");
@@ -801,16 +836,37 @@ public class CheckoutActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
     // ---------------- CartItem Model ----------------
-    private static class CartItem {
+    public class CartItem {
         private String name;
         private int quantity;
         private double price;
 
-        public CartItem(String name, int quantity, double price) { this.name = name; this.quantity = quantity; this.price = price; }
-        public String getName() { return name; }
-        public int getQuantity() { return quantity; }
-        public double getPrice() { return price; }
+        public CartItem() {
+        }
+
+        public CartItem(String name, int quantity, double price) {
+            this.name = name;
+            this.quantity = quantity;
+            this.price = price;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getQuantity() {
+            return quantity;
+        }
+
+        public double getPrice() {
+            return price;
+        }
+
+        public void setQuantity(int quantity) {
+            this.quantity = quantity;
+        }
     }
 }
 

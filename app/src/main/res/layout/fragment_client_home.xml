@@ -21,7 +21,8 @@
             android:layout_height="wrap_content"
             app:layout_scrollFlags="scroll|exitUntilCollapsed"
             app:expandedTitleTextColor="@android:color/transparent"
-            app:collapsedTitleTextColor="@color/text_primary">
+            app:collapsedTitleTextColor="@color/text_primary"
+            app:expandedTitleMarginBottom="40dp">
 
             <!-- HEADER CONTENT -->
             <LinearLayout
@@ -29,8 +30,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 app:layout_collapseMode="parallax"
-                android:padding="24dp"
-                android:paddingTop="48dp"
+                android:padding="16dp"
+                android:paddingTop="32dp"
                 android:background="@color/primary_dark">
 
                 <!-- HEADER ROW: Welcome + Logo -->
@@ -39,7 +40,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="16dp">
+                    android:layout_marginBottom="12dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -52,7 +53,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Welcome!"
-                            android:textSize="24sp"
+                            android:textSize="20sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_white" />
 
@@ -60,7 +61,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="What would you like to order?"
-                            android:textSize="14sp"
+                            android:textSize="12sp"
                             android:textColor="@color/text_white"
                             android:alpha="0.9" />
                     </LinearLayout>
@@ -68,8 +69,8 @@
                     <!-- Logo -->
                     <ImageView
                         android:id="@+id/ivLogo"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
                         android:src="@drawable/app_logo"
                         android:background="@drawable/bg_circle"
                         android:contentDescription="Logo"
@@ -83,23 +84,23 @@
                 <!-- SEARCH BAR -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="4dp"
+                    android:layout_height="44dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="3dp"
                     app:cardBackgroundColor="@color/background_white"
-                    android:layout_marginBottom="16dp">
+                    android:layout_marginBottom="12dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp">
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
                             android:src="@drawable/ic_search"
                             android:tint="@color/text_secondary" />
 
@@ -110,10 +111,11 @@
                             android:layout_weight="1"
                             android:hint="Search food..."
                             android:background="@android:color/transparent"
-                            android:paddingStart="8dp"
+                            android:paddingStart="6dp"
                             android:textColor="@color/text_primary"
                             android:textColorHint="@color/text_secondary"
-                            android:inputType="text" />
+                            android:inputType="text"
+                            android:textSize="14sp" />
 
                     </LinearLayout>
 
@@ -126,7 +128,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center"
-                    android:layout_marginTop="8dp">
+                    android:layout_marginTop="4dp">
 
                     <!-- Main Dishes -->
                     <LinearLayout
@@ -136,19 +138,19 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="8dp">
+                        android:padding="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:cardCornerRadius="30dp"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="26dp"
                             app:cardBackgroundColor="@color/white"
-                            app:cardElevation="2dp"
-                            android:layout_marginBottom="4dp">
+                            app:cardElevation="1.5dp"
+                            android:layout_marginBottom="2dp">
 
                             <ImageView
-                                android:layout_width="30dp"
-                                android:layout_height="30dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_main_dish"
                                 android:tint="@color/primary"
                                 android:layout_gravity="center" />
@@ -159,7 +161,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Main Dish"
-                            android:textSize="12sp"
+                            android:textSize="11sp"
                             android:textColor="@color/text_white"
                             android:textStyle="bold" />
 
@@ -173,19 +175,19 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="8dp">
+                        android:padding="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:cardCornerRadius="30dp"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="26dp"
                             app:cardBackgroundColor="@color/white"
-                            app:cardElevation="2dp"
-                            android:layout_marginBottom="4dp">
+                            app:cardElevation="1.5dp"
+                            android:layout_marginBottom="2dp">
 
                             <ImageView
-                                android:layout_width="30dp"
-                                android:layout_height="30dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_drink"
                                 android:tint="@color/primary"
                                 android:layout_gravity="center" />
@@ -196,7 +198,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Drinks"
-                            android:textSize="12sp"
+                            android:textSize="11sp"
                             android:textColor="@color/text_white"
                             android:textStyle="bold" />
 
@@ -210,19 +212,19 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="8dp">
+                        android:padding="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:cardCornerRadius="30dp"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="26dp"
                             app:cardBackgroundColor="@color/white"
-                            app:cardElevation="2dp"
-                            android:layout_marginBottom="4dp">
+                            app:cardElevation="1.5dp"
+                            android:layout_marginBottom="2dp">
 
                             <ImageView
-                                android:layout_width="30dp"
-                                android:layout_height="30dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_snack"
                                 android:tint="@color/primary"
                                 android:layout_gravity="center" />
@@ -233,7 +235,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Snacks"
-                            android:textSize="12sp"
+                            android:textSize="11sp"
                             android:textColor="@color/text_white"
                             android:textStyle="bold" />
 
@@ -247,19 +249,19 @@
                         android:layout_weight="1"
                         android:orientation="vertical"
                         android:gravity="center"
-                        android:padding="8dp">
+                        android:padding="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            app:cardCornerRadius="30dp"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="26dp"
                             app:cardBackgroundColor="@color/white"
-                            app:cardElevation="2dp"
-                            android:layout_marginBottom="4dp">
+                            app:cardElevation="1.5dp"
+                            android:layout_marginBottom="2dp">
 
                             <ImageView
-                                android:layout_width="30dp"
-                                android:layout_height="30dp"
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
                                 android:src="@drawable/ic_dessert"
                                 android:tint="@color/primary"
                                 android:layout_gravity="center" />
@@ -270,7 +272,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Desserts"
-                            android:textSize="12sp"
+                            android:textSize="11sp"
                             android:textColor="@color/text_white"
                             android:textStyle="bold" />
 
@@ -291,7 +293,7 @@
         android:id="@+id/recyclerMain"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp"
+        android:padding="12dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
