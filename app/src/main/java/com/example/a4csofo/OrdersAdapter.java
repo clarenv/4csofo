@@ -13,7 +13,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
 
@@ -73,6 +76,11 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
             holder.qrImage.setVisibility(View.GONE);
         }
 
+        // 🔥 CURRENT DATE DISPLAY
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault());
+        String formattedDate = sdf.format(new Date(order.getOrderDate()));
+        holder.txtOrderDate.setText(formattedDate);
+
         // 🔥 CLICK LISTENER FOR DELIVERING ORDERS TO OPEN MAP
         holder.itemView.setOnClickListener(v -> {
             if ("delivering".equalsIgnoreCase(order.getStatus())) {
@@ -96,7 +104,8 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
-        TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction, txtItems, txtPickupInfo, txtGcashInfo;
+        TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction,
+                txtItems, txtPickupInfo, txtGcashInfo, txtOrderDate;
         ImageView qrImage;
 
         public OrderViewHolder(@NonNull View itemView) {
@@ -109,7 +118,8 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
             txtItems = itemView.findViewById(R.id.txtItems);
             txtPickupInfo = itemView.findViewById(R.id.txtPickupInfo);
             txtGcashInfo = itemView.findViewById(R.id.txtGcashInfo);
-            qrImage = itemView.findViewById(R.id.qrImage); // NEW: QR Image for GCash
+            qrImage = itemView.findViewById(R.id.qrImage);
+            txtOrderDate = itemView.findViewById(R.id.txtOrderDate); // NEW: Order Date TextView
         }
     }
 }

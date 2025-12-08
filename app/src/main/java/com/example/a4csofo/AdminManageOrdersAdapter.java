@@ -36,17 +36,17 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
     public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
         OrderModel order = orderList.get(position);
 
-        // Basic info
+        // Display basic info
         holder.tvOrderId.setText(order.getOrderKey() != null ? "ORD-" + order.getOrderKey() : "ORD-N/A");
         holder.tvCustomer.setText(order.getCustomerName());
         holder.tvTotalPrice.setText(order.getTotal());
         holder.tvPayment.setText("Payment: " + order.getPayment_method());
 
-        // Status and progress dots
+        // Display status and progress
         holder.tvStatus.setText("Status: " + order.getStatus());
         holder.tvProgress.setText(getProgressDots(order));
 
-        // Update button
+        // Update button click
         holder.btnUpdateStatus.setOnClickListener(v -> {
             String nextStatus = getNextStatus(order);
             if (nextStatus != null) {
@@ -68,7 +68,7 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
         return orderList.size();
     }
 
-    // Determine next status
+    /** Determine next status based on current status */
     private String getNextStatus(OrderModel order) {
         String[] flow = getStatusFlow(order);
         for (int i = 0; i < flow.length; i++) {
@@ -79,12 +79,17 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
         return null;
     }
 
-    // Status flow based on type & payment
+    /** Determine status flow based on pickup/delivery and payment method */
     private String[] getStatusFlow(OrderModel order) {
-        if ("pickup".equalsIgnoreCase(order.getOrderType())) {
+        boolean isPickup = order.getPayment_method().equalsIgnoreCase("Pick Up");
+        boolean isGCash = order.getPayment_method().equalsIgnoreCase("GCash");
+
+        if (isPickup) {
+            // Pickup orders
             return new String[]{"Pending", "Preparing", "Ready for Pickup", "Completed"};
         } else {
-            if ("GCash".equalsIgnoreCase(order.getPayment_method())) {
+            if (isGCash) {
+                // GCash delivery
                 return new String[]{"Pending", "Verifying Payment", "Preparing", "Out for Delivery", "Completed"};
             } else {
                 // COD delivery
@@ -93,14 +98,15 @@ public class AdminManageOrdersAdapter extends RecyclerView.Adapter<AdminManageOr
         }
     }
 
-    // Convert status to progress dots
+    /** Create progress dots UI */
     private String getProgressDots(OrderModel order) {
         String[] flow = getStatusFlow(order);
         StringBuilder sb = new StringBuilder();
         boolean filled = true;
+
         for (String status : flow) {
             if (status.equalsIgnoreCase(order.getStatus())) {
-                sb.append("●"); // Current
+                sb.append("●"); // Current status
                 filled = false;
             } else if (filled) {
                 sb.append("●"); // Completed

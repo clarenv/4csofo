@@ -5,23 +5,11 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Upper left square -->
+    <!-- Simple grid icon for "All" -->
     <path
-        android:fillColor="#FF6200EE"
-        android:pathData="M3,3h7v7H3z" />
-
-    <!-- Upper right square -->
-    <path
-        android:fillColor="#FF6200EE"
-        android:pathData="M14,3h7v7h-7z" />
-
-    <!-- Lower left square -->
-    <path
-        android:fillColor="#FF6200EE"
-        android:pathData="M3,14h7v7H3z" />
-
-    <!-- Lower right square -->
-    <path
-        android:fillColor="#FF6200EE"
-        android:pathData="M14,14h7v7h-7z" />
+        android:fillColor="#FF000000"
+        android:pathData="M3,3h4v4H3V3zM8,3h4v4H8V3zM13,3h4v4h-4V3zM18,3h3v4h-3V3z
+                          M3,8h4v4H3V8zM8,8h4v4H8V8zM13,8h4v4h-4V8zM18,8h3v4h-3V8z
+                          M3,13h4v4H3v-4zM8,13h4v4H8v-4zM13,13h4v4h-4v-4zM18,13h3v4h-3v-4z
+                          M3,18h4v3H3v-3zM8,18h4v3H8v-3zM13,18h4v3h-4v-3zM18,18h3v3h-3v-3z"/>
 </vector>

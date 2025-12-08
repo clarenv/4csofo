@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
@@ -24,6 +26,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+
 import java.io.IOException;
 import java.util.*;
 import androidx.annotation.Nullable;
@@ -218,8 +225,10 @@ public class CheckoutActivity extends AppCompatActivity {
         for (CartItem item : cartList) {
             itemsList.add(item.getName() + " x" + item.getQuantity());
         }
+        // Add order date (current timestamp)
+        long orderDate = System.currentTimeMillis();
 
-        // Use YOUR OrderModel (external) — constructor matches your OrderModel.java
+// Create the OrderModel with 8 parameters
         OrderModel order = new OrderModel(
                 currentUser.getUid(),
                 "Customer Name",
@@ -227,7 +236,8 @@ public class CheckoutActivity extends AppCompatActivity {
                 total,
                 paymentMethod,
                 "Pending",
-                deliveryLocation
+                deliveryLocation,
+                orderDate // <-- add this
         );
 
         // Set extras: pickup/delivery type and pickup info if applicable
@@ -528,7 +538,7 @@ public class CheckoutActivity extends AppCompatActivity {
         TextView txtInstructions = view.findViewById(R.id.txtPickupInstructions);
 
         // Fill branches
-        List<String> branches = Arrays.asList("Main Branch", "East Branch", "West Branch");
+        List<String> branches = Arrays.asList("Bubukal Sta Cruz Laguna");
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         branchSpinner.setAdapter(adapter);
@@ -537,21 +547,19 @@ public class CheckoutActivity extends AppCompatActivity {
 
         builder.setView(view);
 
-        // Provide Save/Cancel but implement Save in custom listener to keep dialog open until validation done
         builder.setPositiveButton("Save", null);
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
         AlertDialog dialog = builder.create();
         dialog.setCanceledOnTouchOutside(true);
 
-        // Setup time picker when user taps pickup time
+        // Setup time picker
         edtPickupTime.setFocusable(false);
         edtPickupTime.setOnClickListener(v -> {
-            // default to current time
             Calendar now = Calendar.getInstance();
             int hour = now.get(Calendar.HOUR_OF_DAY);
             int minute = now.get(Calendar.MINUTE);
-            TimePickerDialog tpd = new TimePickerDialog(CheckoutActivity.this, (view1, hourOfDay, minute1) -> {
+            TimePickerDialog tpd = new TimePickerDialog(this, (view1, hourOfDay, minute1) -> {
                 String hh = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute1);
                 edtPickupTime.setText(hh);
             }, hour, minute, false);
@@ -565,24 +573,68 @@ public class CheckoutActivity extends AppCompatActivity {
                 String selectedPickupTime = edtPickupTime.getText().toString().trim();
                 if (selectedPickupTime.isEmpty()) selectedPickupTime = "ASAP";
 
-                // Save into activity-level pickup fields
+                // Save pickup info
                 pickupBranch = selectedBranch;
                 pickupTime = selectedPickupTime;
                 orderType = "pickup";
-
-                // Also set deliveryLocation to a human readable pickup note (so receipt shows it)
                 deliveryLocation = "Pick-up at " + selectedBranch + " (" + selectedPickupTime + ")";
                 Toast.makeText(this, "Pick-Up set: " + deliveryLocation, Toast.LENGTH_LONG).show();
 
-                // Enable Confirm button for pickup
+                // Enable Confirm button
                 btnConfirm.setEnabled(true);
                 btnConfirm.setAlpha(1f);
 
                 dialog.dismiss();
+
+                // Generate QR and show dialog
+                showQRCodeDialog(deliveryLocation);
             });
         });
 
         dialog.show();
+    }
+
+    /**
+     * Generates a QR code for the pickup information and displays it in a dialog
+     */
+    private void showQRCodeDialog(String data) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Your Pickup QR Code");
+
+        ImageView qrView = new ImageView(this);
+
+        try {
+            int size = 600; // px
+            BitMatrix bitMatrix = new MultiFormatWriter().encode(data, BarcodeFormat.QR_CODE, size, size);
+            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
+
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    bitmap.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+
+            qrView.setImageBitmap(bitmap);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        TextView instructions = new TextView(this);
+        instructions.setText("Screenshot this QR code and bring it to the branch to collect your order.");
+        instructions.setPadding(20, 20, 20, 20);
+        instructions.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(20, 20, 20, 20);
+        layout.addView(qrView);
+        layout.addView(instructions);
+
+        builder.setView(layout);
+        builder.setPositiveButton("OK", (d, which) -> d.dismiss());
+        builder.show();
     }
 
 

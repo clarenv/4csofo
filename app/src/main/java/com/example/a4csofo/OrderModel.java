@@ -2,7 +2,6 @@ package com.example.a4csofo;
 
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-
 import java.util.List;
 
 public class OrderModel {
@@ -12,14 +11,14 @@ public class OrderModel {
     private String customer_name;
     private List<String> items;
     private double total_price;
-    private String payment_method;
+    private String payment_method; // "COD" or "GCash"
     private String status;
     private String transaction_number;
     private String deliveryLocation; // format: "lat,lng"
     private String gcashProof;
 
     // PICKUP INFO
-    private String orderType;      // delivery or pickup
+    private String orderType;      // "delivery" or "pickup"
     private String pickupTime;
     private String pickupBranch;
 
@@ -31,18 +30,23 @@ public class OrderModel {
     private double deliveryLat;
     private double deliveryLng;
 
-    // Required empty constructor for Firebase
-    public OrderModel() {}
+    // ORDER DATE
+    private long orderDate; // timestamp in millis
 
+    // ✅ Proper no-argument constructor for Firebase
+    public OrderModel() {
+        // Firebase requires this empty constructor
+    }
+
+    // Optional parameterized constructor for manual creation
     public OrderModel(String userId, String customer_name, List<String> items, double total_price,
-                      String payment_method, String status, String deliveryLocation) {
-
+                      String payment_method, String status, String deliveryLocation, long orderDate) {
         this.userId = userId;
         this.customer_name = customer_name;
         this.items = items;
         this.total_price = total_price;
-        this.payment_method = payment_method;
-        this.status = status;
+        this.payment_method = payment_method != null ? payment_method : "COD";
+        this.status = status != null ? status : "Pending";
         this.transaction_number = "N/A";
 
         this.orderType = "delivery";
@@ -54,8 +58,13 @@ public class OrderModel {
         this.gcashProof = "";
 
         this.deliveryLocation = deliveryLocation;
+        this.orderDate = orderDate;
 
-        // Extract lat/lng
+        parseLatLng(deliveryLocation);
+    }
+
+    // Parse lat/lng from deliveryLocation string
+    private void parseLatLng(String deliveryLocation) {
         if (deliveryLocation != null && !deliveryLocation.isEmpty()) {
             try {
                 String[] coords = deliveryLocation.split(",");
@@ -69,14 +78,14 @@ public class OrderModel {
         }
     }
 
-    // GETTERS
+    // ----------------- GETTERS -----------------
     public String getOrderKey() { return orderKey; }
     public String getUserId() { return userId; }
     public String getCustomerName() { return customer_name != null ? customer_name : "Unknown"; }
     public List<String> getItems() { return items; }
     public double getTotal_price() { return total_price; }
-    public String getPayment_method() { return payment_method; }
-    public String getStatus() { return status; }
+    public String getPayment_method() { return payment_method != null ? payment_method : "COD"; }
+    public String getStatus() { return status != null ? status : "Pending"; }
     public String getTransactionNumber() { return transaction_number; }
     public String getDeliveryLocation() { return deliveryLocation != null ? deliveryLocation : "N/A"; }
     public double getDeliveryLat() { return deliveryLat; }
@@ -84,33 +93,18 @@ public class OrderModel {
     public String getGcashProof() { return gcashProof; }
     public String getGcashReferenceNumber() { return gcashReferenceNumber != null ? gcashReferenceNumber : ""; }
     public String getGcashProofDownloadUrl() { return gcashProofDownloadUrl != null ? gcashProofDownloadUrl : ""; }
-    public String getOrderType() { return orderType; }
-    public String getPickupTime() { return pickupTime; }
-    public String getPickupBranch() { return pickupBranch; }
+    public String getOrderType() { return orderType != null ? orderType : "delivery"; }
+    public String getPickupTime() { return pickupTime != null ? pickupTime : ""; }
+    public String getPickupBranch() { return pickupBranch != null ? pickupBranch : ""; }
+    public long getOrderDate() { return orderDate; }
 
-    // Extra getters for display
-    public String getTotal() {
-        return "₱" + String.format("%.2f", total_price);
-    }
-
-    public String getFormattedTotal() {
-        return "₱" + String.format("%.2f", total_price);
-    }
-
-    public String getPaymentMethod() {
-        return payment_method != null ? payment_method : "N/A";
-    }
-
-    public String getPaymentText() {
-        return "Payment: " + getPaymentMethod();
-    }
-
+    public String getTotal() { return "₱" + String.format("%.2f", total_price); }
+    public String getPaymentText() { return "Payment: " + getPayment_method(); }
     public String getItemsAsString() {
-        if (items == null || items.isEmpty()) return "No items";
-        return String.join(", ", items);
+        return (items == null || items.isEmpty()) ? "No items" : String.join(", ", items);
     }
 
-    // SETTERS
+    // ----------------- SETTERS -----------------
     public void setOrderKey(String orderKey) { this.orderKey = orderKey; }
     public void setUserId(String userId) { this.userId = userId; }
     public void setCustomerName(String customer_name) { this.customer_name = customer_name; }
@@ -119,31 +113,19 @@ public class OrderModel {
     public void setPayment_method(String payment_method) { this.payment_method = payment_method; }
     public void setStatus(String status) { this.status = status; }
     public void setTransaction_number(String transaction_number) { this.transaction_number = transaction_number; }
-
     public void setDeliveryLocation(String deliveryLocation) {
         this.deliveryLocation = deliveryLocation;
-
-        if (deliveryLocation != null && !deliveryLocation.isEmpty()) {
-            try {
-                String[] coords = deliveryLocation.split(",");
-                if (coords.length == 2) {
-                    this.deliveryLat = Double.parseDouble(coords[0].trim());
-                    this.deliveryLng = Double.parseDouble(coords[1].trim());
-                }
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
-        }
+        parseLatLng(deliveryLocation);
     }
-
     public void setGcashProof(String gcashProof) { this.gcashProof = gcashProof; }
     public void setOrderType(String orderType) { this.orderType = orderType; }
     public void setPickupTime(String pickupTime) { this.pickupTime = pickupTime; }
     public void setPickupBranch(String pickupBranch) { this.pickupBranch = pickupBranch; }
     public void setGcashReferenceNumber(String gcashReferenceNumber) { this.gcashReferenceNumber = gcashReferenceNumber; }
     public void setGcashProofDownloadUrl(String gcashProofDownloadUrl) { this.gcashProofDownloadUrl = gcashProofDownloadUrl; }
+    public void setOrderDate(long orderDate) { this.orderDate = orderDate; }
 
-    // Firebase Status Update
+    // ----------------- UPDATE STATUS -----------------
     public void updateStatus(String newStatus) {
         if (orderKey == null || orderKey.isEmpty()) return;
 
@@ -155,4 +137,14 @@ public class OrderModel {
                 .addOnSuccessListener(aVoid -> this.status = newStatus)
                 .addOnFailureListener(e -> System.err.println("Failed to update status: " + e.getMessage()));
     }
+
+    // ----------------- HELPERS -----------------
+    public boolean isCashOnDelivery() { return "COD".equalsIgnoreCase(getPayment_method()); }
+    public boolean isGcash() { return "GCash".equalsIgnoreCase(getPayment_method()); }
+    public boolean isPickup() { return "pickup".equalsIgnoreCase(getOrderType()); }
+    public boolean isDelivery() { return "delivery".equalsIgnoreCase(getOrderType()); }
+
+    public String getPaymentMethod() { return getPayment_method(); }
+
+    public String getFormattedTotal() { return "₱" + String.format("%.2f", total_price); }
 }
