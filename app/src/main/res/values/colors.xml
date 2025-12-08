@@ -13,6 +13,7 @@
     <color name="background_white">#FFFFFF</color> <!-- White -->
     <color name="background_card">#F4F4F4</color>  <!-- Card background -->
     <color name="background_screen">#FFFFFF</color> <!-- ScrollView background -->
+    <color name="light_gray">#E0E0E0</color>       <!-- Light gray for borders / subtle backgrounds -->
 
     <!-- Text Colors -->
     <color name="text_white">#FFFFFF</color>       <!-- White text -->
