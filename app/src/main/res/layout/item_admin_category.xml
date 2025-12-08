@@ -2,124 +2,194 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="16dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
-    app:cardBackgroundColor="@color/background_card">
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/background_white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp">
+        android:orientation="vertical"
+        android:padding="12dp">
 
-        <!-- Food Image -->
-        <ImageView
-            android:id="@+id/ivFoodImage"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_placeholder"
-            android:background="@color/background_light" />
-
-        <!-- Food Details + Buttons -->
+        <!-- Main Content Row -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="16dp">
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvFoodName"
-                android:layout_width="wrap_content"
+            <!-- Text Details (Left) -->
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Food Name"
-                android:textStyle="bold"
-                android:textSize="16sp" />
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvFoodCategory"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Category"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary" />
+                <!-- Name and Category Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvFoodPrice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₱0.00"
-                android:textSize="14sp"
-                android:textColor="@color/primary" />
+                    <TextView
+                        android:id="@+id/tvFoodName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="Food Name"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/tvFoodPrepTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="15 mins"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
+                    <TextView
+                        android:id="@+id/tvFoodCategory"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@color/primary"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:text="Category"
+                        android:textColor="@color/white"
+                        android:textSize="10sp" />
 
-            <TextView
-                android:id="@+id/tvFoodDesc"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Description"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:layout_marginBottom="4dp" />
+                </LinearLayout>
 
-            <!-- Extras: Add-ons, Ingredients, Serving size, Calories -->
-            <TextView
-                android:id="@+id/tvFoodExtras"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Extras info"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"
-                android:ellipsize="end"
-                android:maxLines="4"
-                android:layout_marginBottom="4dp" />
+                <!-- Price and Time Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
+                    <TextView
+                        android:id="@+id/tvFoodPrice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₱0.00"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="10dp"
+                        android:layout_marginHorizontal="6dp"
+                        android:background="@color/divider_color" />
+
+                    <TextView
+                        android:id="@+id/tvFoodPrepTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="15 mins"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <!-- Description -->
+                <TextView
+                    android:id="@+id/tvFoodDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="Description"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+
+                <!-- Add-ons -->
+                <TextView
+                    android:id="@+id/tvFoodExtras"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Add-ons: None"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp" />
+
+            </LinearLayout>
+
+            <!-- Food Image (Right) -->
+            <ImageView
+                android:id="@+id/ivFoodImage"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:background="@color/background_light"
+                android:contentDescription="Food image"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_placeholder" />
+
+        </LinearLayout>
+
+        <!-- Button Row (Below everything) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Availability Switch -->
             <Switch
                 android:id="@+id/switchAvailable"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Available"
                 android:checked="true"
-                android:layout_marginBottom="8dp"
-                tools:ignore="UseSwitchCompatOrMaterialXml" />
+                android:text="Available"
+                android:textSize="11sp" />
 
-            <!-- RUD Buttons -->
+            <!-- Spacer -->
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Action Buttons -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
+                <!-- Edit Button -->
                 <Button
                     android:id="@+id/btnUpdate"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Update"
-                    android:textSize="12sp" />
+                    android:layout_height="32dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="0dp"
+                    android:text="Edit"
+                    android:textColor="@color/primary"
+                    android:textSize="11sp" />
 
+                <!-- Delete Button -->
                 <Button
                     android:id="@+id/btnDelete"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="0dp"
                     android:text="Delete"
-                    android:textSize="12sp"
-                    android:layout_marginStart="8dp" />
+                    android:textColor="@color/status_error"
+                    android:textSize="11sp" />
 
             </LinearLayout>
 
         </LinearLayout>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

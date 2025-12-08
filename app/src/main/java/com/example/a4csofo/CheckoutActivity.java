@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
@@ -24,6 +26,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+
 import java.io.IOException;
 import java.util.*;
 import androidx.annotation.Nullable;
@@ -36,16 +43,14 @@ public class CheckoutActivity extends AppCompatActivity {
     private Button btnConfirm;
 
     private ArrayList<CartItem> cartList = new ArrayList<>();
-    // NOTE: subtotal and vat are maintained when loading cart
     private double subtotal = 0, vat = 0, deliveryFee = 30, total = 0;
 
     private FirebaseAuth auth;
     private DatabaseReference cartRef;
 
-    private String deliveryLocation = ""; // store address here
+    private String deliveryLocation = "";
     private FusedLocationProviderClient fusedLocationClient;
 
-    // Allowed barangays for checkout
     private final List<String> allowedBarangays = Arrays.asList(
             "bubukal",
             "calios",
@@ -55,18 +60,15 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private final int LOCATION_REQUEST_CODE = 1001;
 
-    // --- GCash related fields ---
     private static final int REQ_CODE_PICK_IMAGE = 2001;
     private Uri gcashImageUri = null;
     private String gcashReferenceNumber = "";
     private String gcashProofDownloadUrl = "";
 
-    // --- Pickup fields to persist between dialogs & confirmOrder
     private String pickupBranch = "";
     private String pickupTime = "";
-    private String orderType = "delivery"; // "delivery" or "pickup"
+    private String orderType = "delivery";
     private ImageView imgPreview;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,15 +86,22 @@ public class CheckoutActivity extends AppCompatActivity {
         paymentGroup = findViewById(R.id.paymentGroup);
         btnConfirm = findViewById(R.id.btnConfirm);
 
+        // DEBUG: Check auth status
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "User is not logged in", Toast.LENGTH_LONG).show();
+            // Option: Redirect to login or use test mode
+        } else {
+            Toast.makeText(this, "Logged in as: " + currentUser.getEmail(), Toast.LENGTH_SHORT).show();
+        }
+
         loadCartFromFirebase();
 
-        // Start with confirm disabled until valid selection/validation OR pickup/GCash completed
         btnConfirm.setEnabled(false);
         btnConfirm.setAlpha(0.5f);
 
         btnConfirm.setOnClickListener(v -> confirmOrder());
 
-        // When payment selection changes: show dialogs appropriately
         paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
             RadioButton selected = findViewById(checkedId);
 
@@ -106,7 +115,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 } else if (paymentText.contains("cash")) {
                     showDeliveryLocationDialog();
                 } else if (paymentText.contains("pick")) {
-                    // Fix: This now works for "Pick Up", "Pick-up", "PICK UP", etc.
                     showPickupOptionsDialog();
                 }
             }
@@ -116,7 +124,11 @@ public class CheckoutActivity extends AppCompatActivity {
 
     private void loadCartFromFirebase() {
         FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) return;
+        if (currentUser == null) {
+            Toast.makeText(this, "Please login first", Toast.LENGTH_LONG).show();
+            finish(); // Or redirect to login
+            return;
+        }
 
         cartRef = FirebaseDatabase.getInstance().getReference("carts").child(currentUser.getUid());
 
@@ -126,7 +138,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 cartList.clear();
 
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                    // Get item name, price, quantity
                     String name = itemSnapshot.child("name").getValue(String.class);
                     Double price = itemSnapshot.child("price").getValue(Double.class);
                     Long qty = itemSnapshot.child("quantity").getValue(Long.class);
@@ -136,7 +147,13 @@ public class CheckoutActivity extends AppCompatActivity {
                     }
                 }
 
-                loadCart(); // Display after retrieving
+                if (cartList.isEmpty()) {
+                    Toast.makeText(CheckoutActivity.this, "Cart is empty", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+
+                loadCart();
             }
 
             @Override
@@ -160,7 +177,7 @@ public class CheckoutActivity extends AppCompatActivity {
             TextView txtPrice = itemView.findViewById(R.id.txtItemPrice);
 
             txtName.setText(item.getName());
-            txtQty.setText(String.valueOf(item.getQuantity())); // quantity from Firebase
+            txtQty.setText(String.valueOf(item.getQuantity()));
             txtPrice.setText("₱" + String.format("%.2f", item.getQuantity() * item.getPrice()));
 
             cartContainer.addView(itemView);
@@ -185,7 +202,18 @@ public class CheckoutActivity extends AppCompatActivity {
         txtTotal.setText("₱" + String.format("%.2f", total));
     }
 
+    // Helper method to check if payment is pickup
+    private boolean isPickupPayment(String paymentMethod) {
+        if (paymentMethod == null) return false;
+        String lower = paymentMethod.toLowerCase();
+        return lower.contains("pick") || lower.contains("pickup") || lower.contains("pick-up");
+    }
 
+    // Helper method to get customer name - SIMPLIFIED FOR TESTING
+    private String getCustomerName(FirebaseUser user) {
+        // TEMPORARY: Always return "Customer" for testing
+        return "Customer";
+    }
 
     private void confirmOrder() {
         int selectedId = paymentGroup.getCheckedRadioButtonId();
@@ -197,13 +225,17 @@ public class CheckoutActivity extends AppCompatActivity {
         RadioButton selected = findViewById(selectedId);
         String paymentMethod = selected.getText().toString();
 
-        // COD and GCash require allowed barangay; pickup does not
+        // DEBUG: Show what payment method was selected
+        Toast.makeText(this, "Payment: " + paymentMethod, Toast.LENGTH_SHORT).show();
+
+        // For COD and GCash, check if location is allowed
         if ((paymentMethod.equalsIgnoreCase("cash on delivery") || paymentMethod.equalsIgnoreCase("gcash"))
                 && !isValidBarangay(deliveryLocation)) {
             Toast.makeText(this, "Your location is not allowed to order.", Toast.LENGTH_LONG).show();
             return;
         }
 
+        // For GCash, check if all fields are filled
         if (paymentMethod.equalsIgnoreCase("gcash")) {
             if (gcashReferenceNumber.trim().isEmpty() || gcashProofDownloadUrl.isEmpty() || deliveryLocation.isEmpty()) {
                 Toast.makeText(this, "Complete all GCash payment fields before confirming.", Toast.LENGTH_LONG).show();
@@ -212,41 +244,68 @@ public class CheckoutActivity extends AppCompatActivity {
         }
 
         FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) return;
+        if (currentUser == null) {
+            Toast.makeText(this, "User not logged in. Cannot place order.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         List<String> itemsList = new ArrayList<>();
         for (CartItem item : cartList) {
             itemsList.add(item.getName() + " x" + item.getQuantity());
         }
 
-        // Use YOUR OrderModel (external) — constructor matches your OrderModel.java
+        long orderDate = System.currentTimeMillis();
+
+        // Determine order type
+        boolean isPickup = isPickupPayment(paymentMethod);
+        String finalOrderType = isPickup ? "pickup" : "delivery";
+
+        // DEBUG: Show order type
+        Toast.makeText(this, "Order Type: " + finalOrderType, Toast.LENGTH_SHORT).show();
+
+        // Get customer name - TEMPORARY FIX
+        String customerName = getCustomerName(currentUser);
+
+        // Use actual user ID
+        String userId = currentUser.getUid();
+
+        // IMPORTANT: Create OrderModel with correct constructor parameters
+        // MUST match OrderModel constructor exactly
         OrderModel order = new OrderModel(
-                currentUser.getUid(),
-                "Customer Name",
-                itemsList,
-                total,
-                paymentMethod,
-                "Pending",
-                deliveryLocation
+                userId,                      // String userId
+                customerName,                // String customer_name
+                itemsList,                   // List<String> items
+                total,                       // double total_price
+                paymentMethod,               // String payment_method
+                "Pending",                   // String status
+                finalOrderType,              // String orderType
+                orderDate                    // long orderDate
         );
 
-        // Set extras: pickup/delivery type and pickup info if applicable
-        if (paymentMethod.equalsIgnoreCase("pick-up")) {
-            order.setOrderType("pickup");
+        // Set additional fields based on order type
+        if (isPickup) {
+            // For pickup orders
             order.setPickupBranch(pickupBranch != null ? pickupBranch : "");
             order.setPickupTime(pickupTime != null ? pickupTime : "");
-            // For pickup, you may want deliveryLocation to indicate pickup location — we already set it when pickup dialog saved
+            order.setDeliveryLocation("Pick-up at " + pickupBranch + " (" + pickupTime + ")");
+
+            // DEBUG: Show pickup details
+            Toast.makeText(this,
+                    "Pickup Details Set:\n" +
+                            "Branch: " + pickupBranch + "\n" +
+                            "Time: " + pickupTime,
+                    Toast.LENGTH_LONG).show();
         } else {
-            order.setOrderType("delivery");
+            // For delivery orders
+            order.setDeliveryLocation(deliveryLocation);
         }
 
-        // GCash fields
+        // GCash fields (if applicable)
         if (paymentMethod.equalsIgnoreCase("gcash")) {
             order.setGcashReferenceNumber(gcashReferenceNumber != null ? gcashReferenceNumber : "");
             order.setGcashProofDownloadUrl(gcashProofDownloadUrl != null ? gcashProofDownloadUrl : "");
         }
 
-        // Create Firebase key and set it on the model before writing
         DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
         String key = ordersRef.push().getKey();
         if (key == null) {
@@ -255,21 +314,43 @@ public class CheckoutActivity extends AppCompatActivity {
         }
         order.setOrderKey(key);
 
-        // Save to Firebase at /orders/{key}
+        // DEBUG: Show order details before saving
+        Toast.makeText(this,
+                "Saving Order to Firebase...\n" +
+                        "Order ID: " + key + "\n" +
+                        "Customer: " + customerName + "\n" +
+                        "Total: ₱" + total,
+                Toast.LENGTH_LONG).show();
+
+        // Save to Firebase
         ordersRef.child(key).setValue(order)
                 .addOnSuccessListener(aVoid -> {
-                    // Clear cart
-                    if (cartRef != null) cartRef.removeValue();
+                    Toast.makeText(this, "✅ Order placed successfully!", Toast.LENGTH_LONG).show();
 
-                    // Show receipt with local computed values
+                    // Clear cart
+                    if (cartRef != null) {
+                        cartRef.removeValue()
+                                .addOnSuccessListener(aVoid1 -> {
+                                    Toast.makeText(CheckoutActivity.this, "Cart cleared", Toast.LENGTH_SHORT).show();
+                                });
+                    }
+
+                    // Show receipt
                     showReceiptPopup(itemsList, this.total, paymentMethod);
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(CheckoutActivity.this, "Failed to place order: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> {
+                    Toast.makeText(CheckoutActivity.this, "❌ Failed to place order: " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                    // DEBUG: More detailed error
+                    if (e.getMessage().contains("permission") || e.getMessage().contains("security")) {
+                        Toast.makeText(CheckoutActivity.this,
+                                "Firebase Security Rules Issue!\n" +
+                                        "Check Firebase Database Rules",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
-    // ---------------- Helper: sanitize/normalize address text ----------------
     private String cleanText(String text) {
         if (text == null) return "";
         String s = text.toLowerCase()
@@ -291,11 +372,9 @@ public class CheckoutActivity extends AppCompatActivity {
         return s;
     }
 
-    // ---------------- UPDATED: isValidBarangay ----------------
     private boolean isValidBarangay(String location) {
         if (location == null || location.isEmpty()) return false;
         String cleaned = cleanText(location);
-        // Must contain Santa Cruz
         boolean containsSantaCruz = cleaned.contains("santa cruz") || cleaned.contains("sta cruz") || cleaned.contains("santa-cruz");
         if (!containsSantaCruz) return false;
         for (String barangay : allowedBarangays) {
@@ -310,7 +389,6 @@ public class CheckoutActivity extends AppCompatActivity {
         btnConfirm.setAlpha(valid ? 1f : 0.5f);
     }
 
-    // ---------------- COD Dialog ----------------
     private void showDeliveryLocationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Select Delivery Location");
@@ -348,7 +426,7 @@ public class CheckoutActivity extends AppCompatActivity {
         rbCurrent.setOnClickListener(v -> {
             edtManual.setEnabled(false);
             orderType = "delivery";
-            requestCurrentLocation(); // this will set deliveryLocation and call validateDeliveryLocation()
+            requestCurrentLocation();
         });
 
         rbSaved.setOnClickListener(v -> {
@@ -395,10 +473,6 @@ public class CheckoutActivity extends AppCompatActivity {
         dlg.show();
     }
 
-    /**
-     * Request current location using getCurrentLocation with a cancellation token.
-     * Improved fallback logic: subLocality -> featureName -> addressLine -> search allowed barangays in full address.
-     */
     private void requestCurrentLocation() {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -434,7 +508,6 @@ public class CheckoutActivity extends AppCompatActivity {
 
                             Address a = list.get(0);
 
-                            // Try multiple fields
                             String barangay = safeTrim(a.getSubLocality());
                             String town = safeTrim(a.getLocality());
                             String province = safeTrim(a.getAdminArea());
@@ -445,11 +518,9 @@ public class CheckoutActivity extends AppCompatActivity {
                             } catch (Exception ignored) {
                             }
 
-                            // If subLocality empty, use featureName or try to extract from addressLine by matching allowed barangays
                             if (isEmpty(barangay)) {
                                 if (!isEmpty(feature)) barangay = feature;
                                 else {
-                                    // Try to detect allowed barangays inside addressLine
                                     String lower = (addressLine != null ? addressLine.toLowerCase() : "");
                                     for (String b : allowedBarangays) {
                                         if (lower.contains(b.toLowerCase())) {
@@ -460,7 +531,6 @@ public class CheckoutActivity extends AppCompatActivity {
                                 }
                             }
 
-                            // If still empty, set just town+province so something is present
                             StringBuilder finalAddress = new StringBuilder();
                             if (!isEmpty(barangay)) finalAddress.append(barangay).append(" ");
                             if (!isEmpty(town)) finalAddress.append(town).append(" ");
@@ -468,11 +538,9 @@ public class CheckoutActivity extends AppCompatActivity {
 
                             deliveryLocation = finalAddress.toString().trim();
                             if (deliveryLocation.isEmpty()) {
-                                // ultimate fallback: use whatever addressLine we got
                                 deliveryLocation = (addressLine != null ? addressLine : "");
                             }
 
-                            // Validate (will enable confirm if valid)
                             validateDeliveryLocation(deliveryLocation);
 
                             if (!btnConfirm.isEnabled()) {
@@ -516,7 +584,6 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // ---------------- PICK-UP DIALOG ----------------
     private void showPickupOptionsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Pick-Up Options");
@@ -527,8 +594,7 @@ public class CheckoutActivity extends AppCompatActivity {
         EditText edtPickupTime = view.findViewById(R.id.edtPickupTime);
         TextView txtInstructions = view.findViewById(R.id.txtPickupInstructions);
 
-        // Fill branches
-        List<String> branches = Arrays.asList("Main Branch", "East Branch", "West Branch");
+        List<String> branches = Arrays.asList("Bubukal Sta Cruz Laguna");
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         branchSpinner.setAdapter(adapter);
@@ -537,21 +603,18 @@ public class CheckoutActivity extends AppCompatActivity {
 
         builder.setView(view);
 
-        // Provide Save/Cancel but implement Save in custom listener to keep dialog open until validation done
         builder.setPositiveButton("Save", null);
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
 
         AlertDialog dialog = builder.create();
         dialog.setCanceledOnTouchOutside(true);
 
-        // Setup time picker when user taps pickup time
         edtPickupTime.setFocusable(false);
         edtPickupTime.setOnClickListener(v -> {
-            // default to current time
             Calendar now = Calendar.getInstance();
             int hour = now.get(Calendar.HOUR_OF_DAY);
             int minute = now.get(Calendar.MINUTE);
-            TimePickerDialog tpd = new TimePickerDialog(CheckoutActivity.this, (view1, hourOfDay, minute1) -> {
+            TimePickerDialog tpd = new TimePickerDialog(this, (view1, hourOfDay, minute1) -> {
                 String hh = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute1);
                 edtPickupTime.setText(hh);
             }, hour, minute, false);
@@ -565,28 +628,70 @@ public class CheckoutActivity extends AppCompatActivity {
                 String selectedPickupTime = edtPickupTime.getText().toString().trim();
                 if (selectedPickupTime.isEmpty()) selectedPickupTime = "ASAP";
 
-                // Save into activity-level pickup fields
                 pickupBranch = selectedBranch;
                 pickupTime = selectedPickupTime;
-                orderType = "pickup";
-
-                // Also set deliveryLocation to a human readable pickup note (so receipt shows it)
+                orderType = "pickup";  // Set order type to pickup
                 deliveryLocation = "Pick-up at " + selectedBranch + " (" + selectedPickupTime + ")";
-                Toast.makeText(this, "Pick-Up set: " + deliveryLocation, Toast.LENGTH_LONG).show();
 
-                // Enable Confirm button for pickup
+                Toast.makeText(this, "✅ Pick-Up Selected:\n" + deliveryLocation, Toast.LENGTH_LONG).show();
+
                 btnConfirm.setEnabled(true);
                 btnConfirm.setAlpha(1f);
 
                 dialog.dismiss();
+
+                // Show QR code for pickup
+                showQRCodeDialog(deliveryLocation);
             });
         });
 
         dialog.show();
     }
 
+    private void showQRCodeDialog(String data) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Your Pickup QR Code");
 
-    // ---------------- GCash Combined Dialog ----------------
+        ImageView qrView = new ImageView(this);
+
+        try {
+            int size = 400; // Reduced size for better performance
+            BitMatrix bitMatrix = new MultiFormatWriter().encode(data, BarcodeFormat.QR_CODE, size, size);
+            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
+
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    bitmap.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+
+            qrView.setImageBitmap(bitmap);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        TextView instructions = new TextView(this);
+        instructions.setText("Screenshot this QR code and bring it to the branch to collect your order.");
+        instructions.setPadding(20, 20, 20, 20);
+        instructions.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(20, 20, 20, 20);
+        layout.addView(qrView);
+        layout.addView(instructions);
+
+        builder.setView(layout);
+        builder.setPositiveButton("OK", (d, which) -> {
+            // After QR code shown, user can click confirm
+            Toast.makeText(this, "Now click the CONFIRM ORDER button", Toast.LENGTH_SHORT).show();
+            d.dismiss();
+        });
+        builder.show();
+    }
+
     private void showGcashCombinedDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("GCash Payment");
@@ -635,9 +740,6 @@ public class CheckoutActivity extends AppCompatActivity {
             });
         }
 
-        // ===============================================================
-        //            LOCATION SECTION (Current / Saved / Manual)
-        // ===============================================================
         rbCurrent.setOnClickListener(v -> {
             edtManual.setEnabled(false);
             orderType = "delivery";
@@ -679,9 +781,6 @@ public class CheckoutActivity extends AppCompatActivity {
             }
         });
 
-        // ===============================================================
-        //               QR IMAGE – CLICK TO ENLARGE
-        // ===============================================================
         qrImage.setOnClickListener(v -> {
             AlertDialog.Builder builderZoom = new AlertDialog.Builder(CheckoutActivity.this);
             ImageView zoomImg = new ImageView(CheckoutActivity.this);
@@ -692,24 +791,17 @@ public class CheckoutActivity extends AppCompatActivity {
             builderZoom.show();
         });
 
-        // ===============================================================
-        //                SELECT IMAGE (SCREENSHOT)
-        // ===============================================================
         btnSelect.setOnClickListener(v -> {
             Intent pickIntent = new Intent(Intent.ACTION_PICK);
             pickIntent.setType("image/*");
             startActivityForResult(pickIntent, REQ_CODE_PICK_IMAGE);
         });
 
-        // If meron nang napiling image, i-preview agad
         if (gcashImageUri != null) {
             imgPreview.setImageURI(gcashImageUri);
             imgPreview.setVisibility(View.VISIBLE);
         }
 
-        // ===============================================================
-        //                     SAVE PAYMENT
-        // ===============================================================
         btnSave.setOnClickListener(v -> {
 
             if (deliveryLocation == null || deliveryLocation.isEmpty()) {
@@ -733,7 +825,6 @@ public class CheckoutActivity extends AppCompatActivity {
                 return;
             }
 
-            // Upload to Firebase Storage
             StorageReference ref = FirebaseStorage.getInstance()
                     .getReference("gcash_proofs/" + System.currentTimeMillis() + ".jpg");
 
@@ -743,7 +834,7 @@ public class CheckoutActivity extends AppCompatActivity {
 
                                 gcashProofDownloadUrl = uri.toString();
 
-                                Toast.makeText(this, "GCash payment saved!", Toast.LENGTH_LONG).show();
+                                Toast.makeText(this, "✅ GCash payment saved!", Toast.LENGTH_LONG).show();
 
                                 btnConfirm.setEnabled(true);
                                 btnConfirm.setAlpha(1f);
@@ -758,7 +849,6 @@ public class CheckoutActivity extends AppCompatActivity {
 
         dialog.show();
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -775,18 +865,15 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
     private void showReceiptPopup(List<String> items, double total, String paymentMethod) {
-        // Safety checks
         if (items == null) items = new ArrayList<>();
         if (paymentMethod == null) paymentMethod = "N/A";
         if (deliveryLocation == null) deliveryLocation = "";
         if (gcashReferenceNumber == null) gcashReferenceNumber = "";
         if (gcashProofDownloadUrl == null) gcashProofDownloadUrl = "";
 
-        // Use the locally computed subtotal and vat (these are already calculated in loadCart)
         double localSubtotal = this.subtotal;
         double localVat = this.vat;
 
-        // Build receipt string
         StringBuilder receiptBuilder = new StringBuilder();
         receiptBuilder.append("🧾  OFFICIAL RECEIPT\n\n");
         receiptBuilder.append("A4CSOFO FOOD SERVICES\n");
@@ -823,21 +910,19 @@ public class CheckoutActivity extends AppCompatActivity {
         receiptBuilder.append("Date/Time: " + java.text.DateFormat.getDateTimeInstance().format(new java.util.Date()) + "\n");
         receiptBuilder.append("--------------------------------------------\n");
         receiptBuilder.append("✅ THANK YOU FOR YOUR PURCHASE!\n");
+        receiptBuilder.append("Order saved to Firebase!\n");
 
-        // Show receipt dialog (non-cancelable to ensure user sees it)
         new AlertDialog.Builder(this)
-                .setTitle("Order Confirmed")
+                .setTitle("✅ Order Confirmed!")
                 .setMessage(receiptBuilder.toString())
-                .setCancelable(false) // user must press OK
+                .setCancelable(false)
                 .setPositiveButton("OK", (dialog, which) -> {
-                    // FIXED: Set result OK and finish
                     setResult(RESULT_OK);
-                    finish(); // Babalik sa MainActivity
+                    finish();
                 })
                 .show();
     }
 
-    // ---------------- CartItem Model ----------------
     public class CartItem {
         private String name;
         private int quantity;
@@ -869,5 +954,3 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 }
-
-

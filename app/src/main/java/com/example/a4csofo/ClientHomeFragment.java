@@ -42,7 +42,7 @@ public class ClientHomeFragment extends Fragment {
     private AppBarLayout appBarLayout;
     private EditText searchEditText;
 
-    private LinearLayout btnMainDish, btnDrinks, btnSnacks, btnDesserts;
+    private LinearLayout btnAll, btnMainDish, btnDrinks, btnSnacks, btnDesserts;
     private String currentCategory = "all";
 
     private FirebaseAuth auth;
@@ -65,6 +65,7 @@ public class ClientHomeFragment extends Fragment {
         searchEditText = view.findViewById(R.id.etSearch);
         appBarLayout = view.findViewById(R.id.appBarLayout);
 
+        btnAll = view.findViewById(R.id.btnAll); // New All button
         btnMainDish = view.findViewById(R.id.btnMainDish);
         btnDrinks = view.findViewById(R.id.btnDrinks);
         btnSnacks = view.findViewById(R.id.btnSnacks);
@@ -117,6 +118,7 @@ public class ClientHomeFragment extends Fragment {
     }
 
     private void setupCategoryButtons() {
+        btnAll.setOnClickListener(v -> filterByCategory("all")); // All button
         btnMainDish.setOnClickListener(v -> filterByCategory("main dish"));
         btnDrinks.setOnClickListener(v -> filterByCategory("drinks"));
         btnSnacks.setOnClickListener(v -> filterByCategory("snacks"));
@@ -153,28 +155,40 @@ public class ClientHomeFragment extends Fragment {
         resetCategoryButtons();
         highlightCategoryButton(currentCategory);
 
+        if (currentCategory.equals("all")) {
+            filteredFoodList.clear();
+            filteredFoodList.addAll(foodList);
+            String query = searchEditText.getText().toString();
+            if (!query.isEmpty()) applyFilters(query, "all");
+            else foodAdapter.updateList(filteredFoodList);
+            return;
+        }
+
         String query = searchEditText.getText().toString();
         applyFilters(query, currentCategory);
     }
 
     private void resetCategoryButtons() {
+        btnAll.setAlpha(0.8f);
         btnMainDish.setAlpha(0.8f);
         btnDrinks.setAlpha(0.8f);
         btnSnacks.setAlpha(0.8f);
         btnDesserts.setAlpha(0.8f);
 
-        btnMainDish.setScaleX(1f);
-        btnMainDish.setScaleY(1f);
-        btnDrinks.setScaleX(1f);
-        btnDrinks.setScaleY(1f);
-        btnSnacks.setScaleX(1f);
-        btnSnacks.setScaleY(1f);
-        btnDesserts.setScaleX(1f);
-        btnDesserts.setScaleY(1f);
+        btnAll.setScaleX(1f); btnAll.setScaleY(1f);
+        btnMainDish.setScaleX(1f); btnMainDish.setScaleY(1f);
+        btnDrinks.setScaleX(1f); btnDrinks.setScaleY(1f);
+        btnSnacks.setScaleX(1f); btnSnacks.setScaleY(1f);
+        btnDesserts.setScaleX(1f); btnDesserts.setScaleY(1f);
     }
 
     private void highlightCategoryButton(String category) {
         switch (category) {
+            case "all":
+                btnAll.setAlpha(1f);
+                btnAll.setScaleX(1.08f);
+                btnAll.setScaleY(1.08f);
+                break;
             case "main dish":
                 btnMainDish.setAlpha(1f);
                 btnMainDish.setScaleX(1.08f);
@@ -196,7 +210,6 @@ public class ClientHomeFragment extends Fragment {
                 btnDesserts.setScaleY(1.08f);
                 break;
             default:
-                // For "all" or unknown categories, don't highlight any
                 break;
         }
     }
@@ -215,9 +228,7 @@ public class ClientHomeFragment extends Fragment {
         Log.d("SearchFilter", "Total food items to filter: " + foodList.size());
 
         for (FoodItem food : foodList) {
-            if (food == null || food.name == null) {
-                continue;
-            }
+            if (food == null || food.name == null) continue;
 
             String foodName = food.name.toLowerCase().trim();
             String foodCategory = (food.category == null ? "" : food.category.toLowerCase().trim());
@@ -225,19 +236,15 @@ public class ClientHomeFragment extends Fragment {
             boolean matchesSearch = query.isEmpty() || foodName.contains(query);
             boolean matchesCategory = cat.equals("all") || foodCategory.equals(cat);
 
-            if (matchesSearch && matchesCategory) {
-                tempFilteredList.add(food);
-            }
+            if (matchesSearch && matchesCategory) tempFilteredList.add(food);
         }
 
-        // Update the adapter's list
         filteredFoodList.clear();
         filteredFoodList.addAll(tempFilteredList);
         foodAdapter.updateList(filteredFoodList);
 
         Log.d("SearchFilter", "Filter result count: " + filteredFoodList.size());
 
-        // Show message if no results
         if (filteredFoodList.isEmpty() && (!query.isEmpty() || !cat.equals("all"))) {
             Toast.makeText(getContext(), "No items found", Toast.LENGTH_SHORT).show();
         }
@@ -255,22 +262,14 @@ public class ClientHomeFragment extends Fragment {
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
                     FoodItem food = itemSnapshot.getValue(FoodItem.class);
                     if (food != null) {
-                        // Debug logging for each food item
-                        Log.d("FoodLoaded", "Name: " + food.name +
-                                ", Category: " + food.category +
-                                ", Price: " + food.price);
-
+                        Log.d("FoodLoaded", "Name: " + food.name + ", Category: " + food.category + ", Price: " + food.price);
                         foodList.add(food);
                     }
                 }
 
-                // Initially show ALL items
                 filteredFoodList.clear();
                 filteredFoodList.addAll(foodList);
                 foodAdapter.updateList(filteredFoodList);
-
-                Log.d("FoodList", "Food list size: " + foodList.size());
-                Log.d("FilteredList", "Filtered list size: " + filteredFoodList.size());
 
                 if (foodList.isEmpty()) {
                     Toast.makeText(getContext(), "No food items available", Toast.LENGTH_SHORT).show();
@@ -312,9 +311,7 @@ public class ClientHomeFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
-            if (foods == null || foods.isEmpty() || position >= foods.size()) {
-                return;
-            }
+            if (foods == null || foods.isEmpty() || position >= foods.size()) return;
 
             FoodItem food = foods.get(position);
             if (food == null) return;
@@ -327,11 +324,8 @@ public class ClientHomeFragment extends Fragment {
 
             if (food.base64Image != null && !food.base64Image.isEmpty()) {
                 Bitmap bitmap = base64ToBitmap(food.base64Image);
-                if (bitmap != null) {
-                    holder.ivFoodImage.setImageBitmap(bitmap);
-                } else {
-                    holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
-                }
+                if (bitmap != null) holder.ivFoodImage.setImageBitmap(bitmap);
+                else holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             } else {
                 holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             }

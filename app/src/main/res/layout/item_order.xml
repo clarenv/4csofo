@@ -60,6 +60,32 @@
                     android:paddingStart="12dp"/>
             </LinearLayout>
 
+            <!-- Order Date -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Order Date:"
+                    android:textColor="#666666"
+                    android:textSize="14sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/txtOrderDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nov 25, 2024 2:30 PM"
+                    android:textColor="#333333"
+                    android:textSize="15sp"
+                    android:paddingStart="12dp"/>
+            </LinearLayout>
+
             <!-- Items -->
             <LinearLayout
                 android:layout_width="match_parent"

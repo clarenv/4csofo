@@ -5,7 +5,6 @@ import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,32 +48,89 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         AdminUserModel user = userList.get(position);
 
-        // -------------------- Null-Safe Text --------------------
+        // Set User Data
         holder.txtName.setText(user.getName() != null ? user.getName() : "Unknown");
-        holder.txtEmail.setText(user.getEmail() != null ? user.getEmail() : "Unknown");
-        holder.txtRole.setText(user.getRole() != null ? user.getRole() : "Unknown");
+        holder.txtEmail.setText(user.getEmail() != null ? user.getEmail() : "No email");
 
-        // -------------------- Active / Online Status --------------------
-        boolean isActive = user.isActive();
-        holder.tvOnlineStatus.setText(isActive ? "Online" : "Offline");
-        holder.tvOnlineStatus.setTextColor(isActive ? Color.parseColor("#4CAF50")
-                : Color.parseColor("#F44336"));
+        // Role with proper formatting
+        String role = user.getRole();
+        if (role != null && !role.trim().isEmpty()) {
+            String formattedRole = role.substring(0, 1).toUpperCase() + role.substring(1).toLowerCase();
+            holder.txtRole.setText(formattedRole);
+
+            // Set role color based on role type
+            switch (role.toLowerCase()) {
+                case "admin":
+                    holder.txtRole.setBackgroundColor(Color.parseColor("#FF5252")); // Red
+                    break;
+                case "staff":
+                    holder.txtRole.setBackgroundColor(Color.parseColor("#FF9800")); // Orange
+                    break;
+                default: // customer
+                    holder.txtRole.setBackgroundColor(Color.parseColor("#4CAF50")); // Green
+                    break;
+            }
+        } else {
+            holder.txtRole.setText("Customer");
+            holder.txtRole.setBackgroundColor(Color.parseColor("#4CAF50")); // Green
+        }
+
+        // Phone
+        if (user.getPhone() != null && !user.getPhone().isEmpty() && !user.getPhone().equals("No phone")) {
+            holder.txtPhone.setText("📱 " + user.getPhone());
+            holder.txtPhone.setVisibility(View.VISIBLE);
+        } else {
+            holder.txtPhone.setVisibility(View.GONE);
+        }
+
+        // Address
+        if (user.getAddress() != null && !user.getAddress().isEmpty() && !user.getAddress().equals("No address")) {
+            holder.txtAddress.setText("📍 " + user.getAddress());
+            holder.txtAddress.setVisibility(View.VISIBLE);
+        } else {
+            holder.txtAddress.setVisibility(View.GONE);
+        }
+
+        // Status - FIXED: Use isOnline() instead of isUserOnline()
+        if (user.isOnline()) {
+            holder.tvStatus.setText("🟢 Online");
+            holder.tvStatus.setTextColor(Color.parseColor("#4CAF50")); // Green
+        } else {
+            holder.tvStatus.setText("🔴 Offline");
+            holder.tvStatus.setTextColor(Color.parseColor("#757575")); // Gray
+        }
 
         String uid = user.getUid();
 
-        // -------------------- Buttons --------------------
-        holder.btnDelete.setOnClickListener(v -> {
-            if (deleteListener != null && uid != null && !uid.isEmpty()) {
-                deleteListener.onDelete(uid);
-            } else {
-                Toast.makeText(holder.itemView.getContext(),
-                        "Cannot delete user: UID is missing",
-                        Toast.LENGTH_SHORT).show();
+        // Delete Button
+        if (holder.btnDelete != null) {
+            holder.btnDelete.setOnClickListener(v -> {
+                if (deleteListener != null && uid != null && !uid.isEmpty()) {
+                    showDeleteConfirmation(holder.itemView.getContext(), user);
+                }
+            });
+        }
+
+        // View Profile Button
+        if (holder.btnViewProfile != null) {
+            holder.btnViewProfile.setOnClickListener(v -> {
+                if (actionListener != null) {
+                    actionListener.onViewProfile(user);
+                }
+            });
+        }
+
+        // Whole Item Click
+        holder.itemView.setOnClickListener(v -> {
+            if (actionListener != null) {
+                actionListener.onViewProfile(user);
             }
         });
 
-        holder.btnViewProfile.setOnClickListener(v -> {
-            if (actionListener != null) actionListener.onViewProfile(user);
+        // Long Press for Quick Delete
+        holder.itemView.setOnLongClickListener(v -> {
+            showDeleteConfirmation(holder.itemView.getContext(), user);
+            return true;
         });
     }
 
@@ -83,24 +139,48 @@ public class AdminUserAdapter extends RecyclerView.Adapter<AdminUserAdapter.User
         return userList != null ? userList.size() : 0;
     }
 
-    // -------------------- Update List (for Search/Filter) --------------------
+    // Update List (for Search/Filter)
     public void updateList(List<AdminUserModel> newList) {
         this.userList = newList != null ? newList : new ArrayList<>();
         notifyDataSetChanged();
     }
 
+    // Delete Confirmation
+    private void showDeleteConfirmation(android.content.Context context, AdminUserModel user) {
+        new AlertDialog.Builder(context)
+                .setTitle("Delete User")
+                .setMessage("Are you sure you want to delete " + user.getName() + "?\n\nThis action cannot be undone.")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    if (deleteListener != null && user.getUid() != null) {
+                        deleteListener.onDelete(user.getUid());
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    // ViewHolder - CHANGED: TextView instead of ImageView
     static class UserViewHolder extends RecyclerView.ViewHolder {
-        TextView txtName, txtEmail, txtRole, tvOnlineStatus;
-        ImageView btnDelete, btnViewProfile;
+        TextView txtName, txtEmail, txtRole, tvStatus, txtPhone, txtAddress;
+        TextView btnDelete, btnViewProfile; // CHANGED to TextView
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             txtName = itemView.findViewById(R.id.txtName);
             txtEmail = itemView.findViewById(R.id.txtEmail);
             txtRole = itemView.findViewById(R.id.txtRole);
-            tvOnlineStatus = itemView.findViewById(R.id.tvOnlineStatus);
+
+            // CHANGED: These are TextViews in your XML
             btnDelete = itemView.findViewById(R.id.btnDelete);
             btnViewProfile = itemView.findViewById(R.id.btnViewProfile);
+
+            // Status field (check if exists in your layout)
+            tvStatus = itemView.findViewById(R.id.tvStatus);
+
+            // Optional fields
+            txtPhone = itemView.findViewById(R.id.txtPhone);
+            txtAddress = itemView.findViewById(R.id.txtAddress);
         }
     }
 }

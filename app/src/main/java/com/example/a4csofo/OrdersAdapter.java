@@ -13,7 +13,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
 
@@ -40,51 +43,95 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
         // Customer name
         holder.txtCustomer.setText(order.getCustomerName());
 
-        // Total price
-        holder.txtTotal.setText(order.getFormattedTotal());
+        // Total price - use getFormattedTotalForDisplay() instead of getFormattedTotal()
+        holder.txtTotal.setText(order.getFormattedTotalForDisplay());
 
-        // Payment method → only the value
-        holder.txtPayment.setText(order.getPaymentText());
+        // Payment method
+        holder.txtPayment.setText(order.getPayment_method());
 
         // Status
         holder.txtStatus.setText(order.getStatus() != null ? order.getStatus() : "Pending");
 
-        // Transaction number
-        holder.txtTransaction.setText(order.getTransactionNumber());
+        // Items - use getItemsAsStringForDisplay() instead of getItemsAsString()
+        holder.txtItems.setText(order.getItemsAsStringForDisplay());
 
-        // Items → only the value
-        holder.txtItems.setText(order.getItemsAsString());
-
-        // Pickup info → only the value
-        if ("pickup".equalsIgnoreCase(order.getOrderType())) {
+        // Pickup info - use isPickupOrder() instead of isPickup()
+        if (order.isPickupOrder()) {
             holder.txtPickupInfo.setVisibility(View.VISIBLE);
-            holder.txtPickupInfo.setText(order.getPickupBranch() + " at " + order.getPickupTime());
+            String pickupInfo = "";
+            if (order.getPickupBranch() != null && !order.getPickupBranch().isEmpty()) {
+                pickupInfo = order.getPickupBranch();
+            }
+            if (order.getPickupTime() != null && !order.getPickupTime().isEmpty()) {
+                if (!pickupInfo.isEmpty()) pickupInfo += " - ";
+                pickupInfo += order.getPickupTime();
+            }
+            holder.txtPickupInfo.setText(pickupInfo);
         } else {
             holder.txtPickupInfo.setVisibility(View.GONE);
         }
 
-        // GCash info → only show if payment method is GCash
-        if ("GCash".equalsIgnoreCase(order.getPaymentMethod())) {
+        // GCash info - use isGcash() (this method exists)
+        if (order.isGcash()) {
             holder.txtGcashInfo.setVisibility(View.VISIBLE);
-            holder.txtGcashInfo.setText(order.getGcashReferenceNumber());
+            String gcashInfo = "";
+            if (order.getGcashReferenceNumber() != null && !order.getGcashReferenceNumber().isEmpty()) {
+                gcashInfo = "Ref: " + order.getGcashReferenceNumber();
+            }
+            holder.txtGcashInfo.setText(gcashInfo);
             holder.qrImage.setVisibility(View.VISIBLE);
         } else {
             holder.txtGcashInfo.setVisibility(View.GONE);
             holder.qrImage.setVisibility(View.GONE);
         }
 
-        // 🔥 CLICK LISTENER FOR DELIVERING ORDERS TO OPEN MAP
+        // Order date
+        if (order.getOrderDate() > 0) {
+            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault());
+            String formattedDate = sdf.format(new Date(order.getOrderDate()));
+            holder.txtOrderDate.setText(formattedDate);
+        } else {
+            holder.txtOrderDate.setText("Date not available");
+        }
+
+        // Transaction number
+        String transactionNum = order.getOrderKey();
+        if (transactionNum != null && transactionNum.length() > 8) {
+            transactionNum = transactionNum.substring(0, 8);
+        }
+        holder.txtTransaction.setText("TRX: " + (transactionNum != null ? transactionNum : "N/A"));
+
+        // Delivery location
+        if (order.getDeliveryLocation() != null && !order.getDeliveryLocation().isEmpty()) {
+            holder.txtDeliveryLocation.setText("📍 " + order.getDeliveryLocation());
+            holder.txtDeliveryLocation.setVisibility(View.VISIBLE);
+        } else {
+            holder.txtDeliveryLocation.setVisibility(View.GONE);
+        }
+
+        // Click listener for delivering orders
         holder.itemView.setOnClickListener(v -> {
-            if ("delivering".equalsIgnoreCase(order.getStatus())) {
-                double lat = order.getDeliveryLat();
-                double lng = order.getDeliveryLng();
-                if (lat != 0 && lng != 0) {
-                    String geoUri = "geo:" + lat + "," + lng + "?q=" + lat + "," + lng + "(Your+Order)";
+            if ("delivering".equalsIgnoreCase(order.getStatus()) ||
+                    "out for delivery".equalsIgnoreCase(order.getStatus()) ||
+                    "on the way".equalsIgnoreCase(order.getStatus())) {
+
+                // Check if we have delivery location coordinates
+                if (order.hasDeliveryLocation()) {
+                    String geoUri = "geo:" + order.getDeliveryLat() + "," + order.getDeliveryLng() + "?q=" +
+                            order.getDeliveryLat() + "," + order.getDeliveryLng() + "(Delivery+Location)";
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(geoUri));
                     intent.setPackage("com.google.android.apps.maps");
-                    context.startActivity(intent);
+
+                    if (intent.resolveActivity(context.getPackageManager()) != null) {
+                        context.startActivity(intent);
+                    } else {
+                        // Fallback to web Google Maps
+                        String webUri = "https://www.google.com/maps/search/?api=1&query=" +
+                                order.getDeliveryLat() + "," + order.getDeliveryLng();
+                        context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(webUri)));
+                    }
                 } else {
-                    Toast.makeText(context, "Delivery location not available", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Delivery location coordinates not available", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -92,11 +139,17 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
 
     @Override
     public int getItemCount() {
-        return orderList.size();
+        return orderList != null ? orderList.size() : 0;
+    }
+
+    public void updateOrders(List<OrderModel> newOrders) {
+        orderList = newOrders;
+        notifyDataSetChanged();
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
-        TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction, txtItems, txtPickupInfo, txtGcashInfo;
+        TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction,
+                txtItems, txtPickupInfo, txtGcashInfo, txtOrderDate, txtDeliveryLocation;
         ImageView qrImage;
 
         public OrderViewHolder(@NonNull View itemView) {
@@ -109,7 +162,17 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
             txtItems = itemView.findViewById(R.id.txtItems);
             txtPickupInfo = itemView.findViewById(R.id.txtPickupInfo);
             txtGcashInfo = itemView.findViewById(R.id.txtGcashInfo);
-            qrImage = itemView.findViewById(R.id.qrImage); // NEW: QR Image for GCash
+            qrImage = itemView.findViewById(R.id.qrImage);
+            txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
+
+            // Check if txtDeliveryLocation exists in layout
+            txtDeliveryLocation = itemView.findViewById(R.id.txtDeliveryLocation);
+
+            // If it doesn't exist, create a placeholder
+            if (txtDeliveryLocation == null) {
+                // You can create a new TextView programmatically if needed
+                // Or just ignore it and don't use it
+            }
         }
     }
 }
