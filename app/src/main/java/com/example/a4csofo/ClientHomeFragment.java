@@ -1,9 +1,11 @@
 package com.example.a4csofo;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,20 +28,22 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ClientHomeFragment extends Fragment {
 
     private TextView tvWelcome;
     private ImageView ivLogo;
     private RecyclerView recyclerMain;
-    private LinearLayout menuOrdersLayout; // KEEP THIS BUT DON'T USE IT
+    private LinearLayout menuOrdersLayout;
     private AppBarLayout appBarLayout;
     private EditText searchEditText;
 
-    // NEW: Category buttons
-    private LinearLayout btnMainDish, btnDrinks, btnSnacks, btnDesserts;
-    private String currentCategory = "All"; // Track current category
+    // UPDATED: Added btnAll
+    private LinearLayout btnAll, btnMainDish, btnDrinks, btnSnacks, btnDesserts;
+    private String currentCategory = "All";
 
     private FirebaseAuth auth;
     private List<FoodItem> foodList = new ArrayList<>();
@@ -50,6 +54,7 @@ public class ClientHomeFragment extends Fragment {
         // Required empty public constructor
     }
 
+    @SuppressLint("MissingInflatedId")
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -60,11 +65,12 @@ public class ClientHomeFragment extends Fragment {
         tvWelcome = view.findViewById(R.id.tvWelcome);
         ivLogo = view.findViewById(R.id.ivLogo);
         recyclerMain = view.findViewById(R.id.recyclerMain);
-        menuOrdersLayout = view.findViewById(R.id.menuOrdersLayout); // KEEP BUT COMMENT OUT LATER
+        menuOrdersLayout = view.findViewById(R.id.menuOrdersLayout);
         searchEditText = view.findViewById(R.id.etSearch);
         appBarLayout = view.findViewById(R.id.appBarLayout);
 
-        // NEW: Initialize category buttons
+        // UPDATED: Initialize ALL button (must add in XML)
+        btnAll = view.findViewById(R.id.btnAll); // ADD THIS LINE
         btnMainDish = view.findViewById(R.id.btnMainDish);
         btnDrinks = view.findViewById(R.id.btnDrinks);
         btnSnacks = view.findViewById(R.id.btnSnacks);
@@ -92,19 +98,16 @@ public class ClientHomeFragment extends Fragment {
 
         loadFoodItemsFromFirebase();
 
-        // Shopee-style scroll effect - FIXED VERSION
+        // Shopee-style scroll effect
         recyclerMain.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
-                // SIMPLIFIED VERSION - AppBar effect only
                 float appBarHeight = appBarLayout.getHeight();
                 float newAppBarY = appBarLayout.getTranslationY() - dy;
                 newAppBarY = Math.max(-appBarHeight, Math.min(0, newAppBarY));
                 appBarLayout.setTranslationY(newAppBarY);
-
-                // REMOVED ALL menuOrdersLayout REFERENCES
             }
         });
 
@@ -112,22 +115,27 @@ public class ClientHomeFragment extends Fragment {
         searchEditText.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 filterFood(s.toString());
             }
+
             @Override
             public void afterTextChanged(android.text.Editable s) {}
         });
 
-        // NEW: Category button click listeners
+        // Setup category buttons
         setupCategoryButtons();
 
         return view;
     }
 
-    // NEW: Setup category button listeners
+    // UPDATED: Added All button
     private void setupCategoryButtons() {
+        // All button
+        btnAll.setOnClickListener(v -> filterByCategory("All"));
+
         // Main Dish button
         btnMainDish.setOnClickListener(v -> filterByCategory("Main Dish"));
 
@@ -139,35 +147,36 @@ public class ClientHomeFragment extends Fragment {
 
         // Desserts button
         btnDesserts.setOnClickListener(v -> filterByCategory("Desserts"));
+
+        // Set initial highlight for "All"
+        highlightCategoryButton("All");
     }
 
-    // NEW: Filter by category
     private void filterByCategory(String category) {
         currentCategory = category;
-
-        // Reset all button appearances
-        resetCategoryButtons();
-
-        // Highlight selected button
         highlightCategoryButton(category);
 
-        // Apply category filter
         String searchQuery = searchEditText.getText().toString();
         applyFilters(searchQuery, category);
     }
 
-    // NEW: Reset all category buttons to default appearance
+    // UPDATED: Added All button reset
     private void resetCategoryButtons() {
-        // Reset all buttons (you can customize the appearance)
+        btnAll.setAlpha(0.8f);
         btnMainDish.setAlpha(0.8f);
         btnDrinks.setAlpha(0.8f);
         btnSnacks.setAlpha(0.8f);
         btnDesserts.setAlpha(0.8f);
     }
 
-    // NEW: Highlight selected category button
+    // UPDATED: Added All case
     private void highlightCategoryButton(String category) {
+        resetCategoryButtons();
+
         switch (category) {
+            case "All":
+                btnAll.setAlpha(1.0f);
+                break;
             case "Main Dish":
                 btnMainDish.setAlpha(1.0f);
                 break;
@@ -183,52 +192,107 @@ public class ClientHomeFragment extends Fragment {
         }
     }
 
-    // NEW: Apply both search and category filters
+    // UPDATED: Fixed category filtering with debug logs
     private void applyFilters(String searchQuery, String category) {
         filteredFoodList.clear();
+
+        Log.d("FILTER_DEBUG", "Applying filters - Search: '" + searchQuery + "', Category: '" + category + "'");
+        Log.d("FILTER_DEBUG", "Total items in foodList: " + foodList.size());
 
         for (FoodItem food : foodList) {
             boolean matchesSearch = searchQuery.isEmpty() ||
                     (food.name != null && food.name.toLowerCase().contains(searchQuery.toLowerCase()));
 
-            boolean matchesCategory = category.equals("All") ||
-                    (food.category != null && food.category.equals(category));
+            boolean matchesCategory = true; // Default true for "All"
+
+            if (!category.equals("All")) {
+                // CASE-INSENSITIVE COMPARISON
+                if (food.category != null) {
+                    String foodCategory = food.category.trim();
+                    String selectedCategory = category.trim();
+
+                    matchesCategory = foodCategory.equalsIgnoreCase(selectedCategory);
+
+                    // DEBUG LOG for each item
+                    if (matchesSearch) {
+                        Log.d("FILTER_DEBUG",
+                                "Food: " + food.name +
+                                        " | Category: " + food.category +
+                                        " | Matches selected category '" + category + "': " + matchesCategory);
+                    }
+                } else {
+                    matchesCategory = false; // If food has no category, don't match
+                    Log.d("FILTER_DEBUG", "Food: " + food.name + " has NULL category");
+                }
+            }
 
             if (matchesSearch && matchesCategory) {
                 filteredFoodList.add(food);
+                Log.d("FILTER_DEBUG", "ADDED: " + food.name + " (" + food.category + ")");
             }
         }
 
         foodAdapter.updateList(filteredFoodList);
 
-        // Show message if no items found
+        // Show debug info
+        Log.d("FILTER_DEBUG", "Filter results: " + filteredFoodList.size() + " items found");
+
         if (filteredFoodList.isEmpty()) {
+            String message;
+            if (category.equals("All")) {
+                message = "No items found for '" + searchQuery + "'";
+            } else {
+                message = "No items found for '" + searchQuery + "' in " + category;
+            }
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+        } else {
             Toast.makeText(requireContext(),
-                    "No items found for '" + searchQuery + "' in " + category,
+                    "Found " + filteredFoodList.size() + " items",
                     Toast.LENGTH_SHORT).show();
         }
     }
 
-    // Filter foods by search (updated to include category)
     private void filterFood(String query) {
         applyFilters(query, currentCategory);
     }
 
-    // Load food items from Firebase
+    // UPDATED: Load food items with debug logs
     private void loadFoodItemsFromFirebase() {
         DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
         foodRef.get().addOnSuccessListener(snapshot -> {
             foodList.clear();
+            Set<String> categories = new HashSet<>();
+
             for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
                 FoodItem food = itemSnapshot.getValue(FoodItem.class);
-                if (food != null) foodList.add(food);
+                if (food != null) {
+                    // DEBUG LOG each item
+                    Log.d("LOAD_DEBUG",
+                            "Loaded: " + food.name +
+                                    " | Category: " + food.category +
+                                    " | Price: " + food.price);
+
+                    if (food.category != null) {
+                        categories.add(food.category);
+                    }
+
+                    foodList.add(food);
+                }
             }
+
+            // Show all unique categories found
+            Log.d("CATEGORY_DEBUG", "All categories in database: " + categories);
+            Toast.makeText(requireContext(),
+                    "Loaded " + foodList.size() + " items. Categories found: " + categories,
+                    Toast.LENGTH_LONG).show();
+
             filteredFoodList.clear();
             filteredFoodList.addAll(foodList);
             foodAdapter.notifyDataSetChanged();
-        }).addOnFailureListener(e ->
-                Toast.makeText(requireContext(), "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-        );
+        }).addOnFailureListener(e -> {
+            Toast.makeText(requireContext(), "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e("LOAD_ERROR", "Firebase error: ", e);
+        });
     }
 
     // Convert Base64 to Bitmap
@@ -242,7 +306,7 @@ public class ClientHomeFragment extends Fragment {
         }
     }
 
-    // RecyclerView Adapter (no changes needed)
+    // RecyclerView Adapter
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
         private final List<FoodItem> foods;
 
@@ -351,7 +415,7 @@ public class ClientHomeFragment extends Fragment {
         }
     }
 
-    // Data models (no changes needed)
+    // Data models
     public static class FoodItem {
         public String name;
         public String description;
