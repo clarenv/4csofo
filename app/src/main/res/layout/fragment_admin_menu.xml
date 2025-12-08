@@ -77,7 +77,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="No image selected"
+                                android:text="Tap to add image"
                                 android:textSize="14sp"
                                 android:textColor="@color/text_secondary"
                                 android:layout_marginTop="8dp"/>
@@ -92,6 +92,7 @@
                             android:layout_alignParentEnd="true"
                             android:layout_margin="16dp"
                             android:src="@drawable/ic_camera"
+                            android:contentDescription="Add image"
                             app:backgroundTint="@color/primary"
                             app:tint="@color/text_white"/>
                     </RelativeLayout>
@@ -112,7 +113,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- CATEGORIES SECTION - MOVED TO TOP -->
+            <!-- CATEGORIES SECTION -->
             <!-- Category Spinner -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -148,156 +149,108 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_primary"
-                    android:maxLines="1"/>
+                    android:maxLines="1"
+                    android:maxLength="50"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Two Column Layout for Price and Discount -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Price"
-                    android:layout_marginEnd="8dp"
-                    app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/text_secondary"
-                    app:endIconMode="clear_text">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etPrice"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:textColor="@color/text_primary"
-                        android:maxLines="1"/>
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Discount Price"
-                    app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/text_secondary"
-                    app:endIconMode="clear_text">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etDiscountPrice"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:textColor="@color/text_primary"
-                        android:maxLines="1"/>
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <!-- Two Column Layout for Prep Time and Calories -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="8dp">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Prep Time (mins)"
-                    android:layout_marginEnd="8dp"
-                    app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/text_secondary"
-                    app:endIconMode="clear_text">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etPrepTime"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/text_primary"
-                        android:maxLines="1"/>
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Calories"
-                    app:boxStrokeColor="@color/primary"
-                    app:hintTextColor="@color/text_secondary"
-                    app:endIconMode="clear_text">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etCalories"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/text_primary"
-                        android:maxLines="1"/>
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <!-- Serving Size -->
+            <!-- Regular Price -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Serving Size"
+                android:hint="Regular Price (₱)"
                 android:layout_marginBottom="8dp"
                 app:boxStrokeColor="@color/primary"
                 app:hintTextColor="@color/text_secondary"
                 app:endIconMode="clear_text">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etServingSize"
+                    android:id="@+id/etPrice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:inputType="numberDecimal"
                     android:textColor="@color/text_primary"
                     android:maxLines="1"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Add-ons -->
+            <!-- Three Column Layout for Discounts -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Discounts (%)"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <!-- Senior Citizen Discount -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Senior"
+                    android:layout_marginEnd="8dp"
+                    app:boxStrokeColor="@color/primary"
+                    app:hintTextColor="@color/text_secondary"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDiscountSenior"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:textColor="@color/text_primary"
+                        android:maxLines="1"
+                        android:hint="0-50%"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- PWD Discount -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="PWD"
+                    app:boxStrokeColor="@color/primary"
+                    app:hintTextColor="@color/text_secondary"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDiscountPWD"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:textColor="@color/text_primary"
+                        android:maxLines="1"
+                        android:hint="0-50%"/>
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <!-- Prep Time -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Add-ons (separate with commas)"
+                android:hint="Preparation Time (minutes)"
                 android:layout_marginBottom="8dp"
                 app:boxStrokeColor="@color/primary"
                 app:hintTextColor="@color/text_secondary"
                 app:endIconMode="clear_text">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etAddOns"
+                    android:id="@+id/etPrepTime"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"/>
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Ingredients -->
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Ingredients (separate with commas)"
-                android:layout_marginBottom="8dp"
-                app:boxStrokeColor="@color/primary"
-                app:hintTextColor="@color/text_secondary"
-                app:endIconMode="clear_text">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etIngredients"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"/>
+                    android:inputType="number"
+                    android:textColor="@color/text_primary"
+                    android:maxLines="1"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Description -->
@@ -317,7 +270,8 @@
                     android:layout_height="wrap_content"
                     android:minLines="3"
                     android:maxLines="5"
-                    android:textColor="@color/text_primary"/>
+                    android:textColor="@color/text_primary"
+                    android:maxLength="200"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- In Stock Switch -->
@@ -342,9 +296,7 @@
                     android:id="@+id/switchInStock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:thumbTint="@color/primary"
-                    app:trackTint="@color/primary"/>
+                    android:checked="true"/>
             </LinearLayout>
 
             <!-- Spacer for FAB -->

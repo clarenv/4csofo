@@ -1,110 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardOrder"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
     app:cardBackgroundColor="@android:color/white"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="8dp"
-    android:padding="0dp">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="6dp"
+    android:clickable="true"
+    android:focusable="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="16dp">
 
-        <!-- CUSTOMER INFO SECTION -->
+        <!-- ORDER HEADER (ALWAYS VISIBLE) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="20dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Customer Information"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.02"
-                android:layout_marginBottom="16dp"
-                android:drawablePadding="8dp" />
-
-            <!-- Customer -->
+            <!-- Left side: Order ID & Date -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
+                android:orientation="vertical">
 
+                <!-- CHANGED: txtCustomer to txtOrderId -->
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Customer:"
-                    android:textColor="#666666"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
-
-                <TextView
-                    android:id="@+id/txtCustomer"
+                    android:id="@+id/txtOrderId"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="John Doe"
+                    android:text="#ORD123"
                     android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"/>
-            </LinearLayout>
-
-            <!-- Items -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Items:"
-                    android:textColor="#666666"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
-
-                <TextView
-                    android:id="@+id/txtItems"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Burger, Fries"
-                    android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"
-                    android:maxLines="2"
-                    android:ellipsize="end"/>
-            </LinearLayout>
-
-            <!-- Total -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="12dp"
-                android:paddingBottom="4px"
-                android:background="#F8F9FA">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Total Amount:"
-                    android:textColor="#222222"
                     android:textSize="16sp"
                     android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/txtOrderDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nov 25, 2024 2:30 PM"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp"/>
+
+            </LinearLayout>
+
+            <!-- Right side: Status & Total -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end">
+
+                <TextView
+                    android:id="@+id/txtStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pending"
+                    android:textColor="#FF9800"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="#FFF3E0"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:layout_marginBottom="6dp"/>
 
                 <TextView
                     android:id="@+id/txtTotal"
@@ -112,52 +79,35 @@
                     android:layout_height="wrap_content"
                     android:text="₱155.00"
                     android:textColor="#2196F3"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.02"/>
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
             </LinearLayout>
         </LinearLayout>
 
-        <!-- DIVIDER -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#E0E0E0"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- PAYMENT INFO SECTION -->
+        <!-- EXPANDABLE CONTENT (HIDDEN BY DEFAULT) -->
         <LinearLayout
+            android:id="@+id/layoutExpandContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="20dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Payment Information"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.02"
-                android:layout_marginBottom="16dp"
-                android:drawablePadding="8dp" />
+            android:visibility="gone"
+            android:paddingTop="16dp">
 
             <!-- Payment Method -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
+                android:layout_marginBottom="8dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="Payment Method:"
+                    android:text="Payment:"
                     android:textColor="#666666"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
+                    android:textSize="14sp"/>
 
                 <TextView
                     android:id="@+id/txtPayment"
@@ -165,22 +115,42 @@
                     android:layout_height="wrap_content"
                     android:text="GCash"
                     android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
 
-            <!-- GCash Info -->
+            <!-- Items -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Items:"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/txtItems"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• Burger x2 - ₱100.00\n• Fries x1 - ₱55.00"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- GCash Info (if GCash) -->
             <LinearLayout
+                android:id="@+id/layoutGcashInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="GCash Number:"
+                    android:text="GCash Ref:"
                     android:textColor="#666666"
                     android:textSize="14sp"/>
 
@@ -188,155 +158,85 @@
                     android:id="@+id/txtGcashInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="09171234567"
+                    android:text="TX123456789"
                     android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
 
-            <!-- QR Code -->
-            <ImageView
-                android:id="@+id/qrImage"
-                android:layout_width="160dp"
-                android:layout_height="160dp"
-                android:src="@drawable/qr_gcash"
-                android:visibility="gone"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="8dp"
-                android:contentDescription="GCash QR Code"
-                android:scaleType="fitCenter"/>
-        </LinearLayout>
-
-        <!-- DIVIDER -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#E0E0E0"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- DELIVERY & STATUS SECTION -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Delivery and Status"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.02"
-                android:layout_marginBottom="16dp"
-                android:drawablePadding="8dp" />
-
-            <!-- Status -->
+            <!-- Pickup Info (if Pickup) -->
             <LinearLayout
+                android:id="@+id/layoutPickupInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp"
-                android:background="#F5F9FF"
-                android:padding="12dp"
-                android:paddingHorizontal="16dp">
+                android:orientation="vertical"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Status:"
-                    android:textColor="#1976D2"
+                    android:text="Pickup:"
+                    android:textColor="#666666"
                     android:textSize="14sp"
-                    android:textStyle="bold"/>
-
-                <TextView
-                    android:id="@+id/txtStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Pending"
-                    android:textColor="#1976D2"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:paddingStart="12dp"/>
-            </LinearLayout>
-
-            <!-- Transaction ID -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Transaction ID:"
-                    android:textColor="#666666"
-                    android:textSize="14sp"/>
-
-                <TextView
-                    android:id="@+id/txtTransaction"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="TX123"
-                    android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"/>
-            </LinearLayout>
-
-            <!-- Pickup Info -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="Pickup Info:"
-                    android:textColor="#666666"
-                    android:textSize="14sp"/>
+                    android:layout_marginBottom="4dp"/>
 
                 <TextView
                     android:id="@+id/txtPickupInfo"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Store #1, 12:30 PM"
+                    android:text="Branch: Main\nTime: ASAP"
                     android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
 
-            <!-- Delivery Location -->
+            <!-- Delivery Location (if Delivery) -->
             <LinearLayout
+                android:id="@+id/layoutDeliveryLocation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone">
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Delivery Location:"
                     android:textColor="#666666"
-                    android:textSize="14sp"/>
+                    android:textSize="14sp"
+                    android:layout_marginBottom="4dp"/>
 
                 <TextView
                     android:id="@+id/txtDeliveryLocation"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Bubukal, Santa Cruz"
+                    android:text="Bubukal, Sta. Cruz, Laguna"
                     android:textColor="#333333"
-                    android:textSize="15sp"
-                    android:paddingStart="12dp"
-                    android:maxLines="2"
-                    android:ellipsize="end"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
+
+            <!-- View Receipt Button -->
+            <Button
+                android:id="@+id/btnViewReceipt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="View Receipt"
+                android:textColor="#2196F3"
+                android:background="#E3F2FD"
+                android:paddingVertical="12dp"
+                android:layout_marginTop="8dp"/>
+
         </LinearLayout>
+
+        <!-- EXPAND ARROW -->
+        <ImageView
+            android:id="@+id/imgExpandArrow"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/arrow_down_float"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:contentDescription="Expand"/>
 
     </LinearLayout>
 

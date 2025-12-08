@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_users"
@@ -7,6 +8,10 @@
         android:id="@+id/nav_orders"
         android:icon="@drawable/ic_admin_orders"
         android:title="Orders"/>
+    <item
+        android:id="@+id/nav_famous"
+        android:icon="@drawable/ic_star"
+        android:title="Sales" />
     <item
         android:id="@+id/nav_categories"
         android:icon="@drawable/ic_admin_categories"

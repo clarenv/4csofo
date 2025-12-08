@@ -1,15 +1,5 @@
 package com.example.a4csofo;
 
-import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.pm.PackageManager;
-import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.RingtoneManager;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -18,13 +8,10 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,7 +21,10 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 
 public class ClientOrdersFragment extends Fragment {
 
@@ -49,10 +39,7 @@ public class ClientOrdersFragment extends Fragment {
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
 
-    // Store previous status to detect changes
     private final HashMap<String, String> orderStatusMap = new HashMap<>();
-    private static final String CHANNEL_ID = "order_status_channel";
-    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 101;
 
     public ClientOrdersFragment() { }
 
@@ -73,6 +60,19 @@ public class ClientOrdersFragment extends Fragment {
         recyclerOrders.setLayoutManager(new LinearLayoutManager(requireContext()));
         orderList = new ArrayList<>();
         ordersAdapter = new OrdersAdapter(requireContext(), orderList);
+
+        // Set click listeners
+        ordersAdapter.setOnOrderClickListener(new OrdersAdapter.OnOrderClickListener() {
+            @Override
+            public void onOrderClick(OrderModel order) {
+                // Expand/collapse handled in adapter
+            }
+            @Override
+            public void onViewReceiptClick(OrderModel order) {
+                showOrderReceipt(order);
+            }
+        });
+
         recyclerOrders.setAdapter(ordersAdapter);
 
         // Firebase
@@ -86,75 +86,25 @@ public class ClientOrdersFragment extends Fragment {
         }
 
         ordersRef = FirebaseDatabase.getInstance().getReference("orders");
-
-        // Setup notification channel with sound
-        createNotificationChannel();
-
-        // Request runtime notification permission for Android 13+
-        requestNotificationPermissionIfNeeded();
-
-        // Load orders with ChildEventListener
         loadUserOrders();
 
         return view;
     }
 
-    // Request POST_NOTIFICATIONS permission on Android 13+
-    private void requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(requireActivity(),
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        NOTIFICATION_PERMISSION_REQUEST_CODE);
-            }
-        }
-    }
-
     private void loadUserOrders() {
         progressBar.setVisibility(View.VISIBLE);
+        orderList.clear();
 
         ordersRef.orderByChild("userId").equalTo(currentUser.getUid())
                 .addChildEventListener(new ChildEventListener() {
                     @Override
                     public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                        OrderModel order = snapshot.getValue(OrderModel.class);
-                        if (order != null) {
-                            order.setOrderKey(snapshot.getKey());
-                            orderList.add(order);
-
-                            // Save initial status (no notification on first load)
-                            orderStatusMap.put(order.getOrderKey(), order.getStatus());
-                            ordersAdapter.notifyDataSetChanged();
-                        }
-                        progressBar.setVisibility(View.GONE);
-                        emptyLayout.setVisibility(orderList.isEmpty() ? View.VISIBLE : View.GONE);
+                        handleOrderSnapshot(snapshot, false);
                     }
 
                     @Override
                     public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                        OrderModel updatedOrder = snapshot.getValue(OrderModel.class);
-                        if (updatedOrder != null) {
-                            updatedOrder.setOrderKey(snapshot.getKey());
-
-                            // Find the order in the list
-                            for (int i = 0; i < orderList.size(); i++) {
-                                if (orderList.get(i).getOrderKey().equals(updatedOrder.getOrderKey())) {
-                                    // Check for status change
-                                    String oldStatus = orderStatusMap.get(updatedOrder.getOrderKey());
-                                    String newStatus = updatedOrder.getStatus();
-                                    if (oldStatus != null && !oldStatus.equals(newStatus)) {
-                                        showStatusNotification(updatedOrder.getOrderKey(), newStatus);
-                                    }
-
-                                    // Update map and list
-                                    orderStatusMap.put(updatedOrder.getOrderKey(), newStatus);
-                                    orderList.set(i, updatedOrder);
-                                    ordersAdapter.notifyItemChanged(i);
-                                    break;
-                                }
-                            }
-                        }
+                        handleOrderSnapshot(snapshot, true);
                     }
 
                     @Override
@@ -164,72 +114,216 @@ public class ClientOrdersFragment extends Fragment {
                             if (orderList.get(i).getOrderKey().equals(key)) {
                                 orderList.remove(i);
                                 orderStatusMap.remove(key);
-                                ordersAdapter.notifyItemRemoved(i);
+                                ordersAdapter.updateOrders(orderList);
                                 break;
                             }
                         }
-                        emptyLayout.setVisibility(orderList.isEmpty() ? View.VISIBLE : View.GONE);
+                        updateUI();
                     }
 
                     @Override
                     public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) { }
 
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) { }
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(requireContext(), "Error loading orders", Toast.LENGTH_SHORT).show();
+                        progressBar.setVisibility(View.GONE);
+                    }
                 });
     }
 
-    // 🔔 Notification method with sound
-    private void showStatusNotification(String orderKey, String newStatus) {
-        Log.d("NOTIFICATION", "Triggering notification for order " + orderKey + " status " + newStatus);
+    private void handleOrderSnapshot(DataSnapshot snapshot, boolean isUpdate) {
+        try {
+            OrderModel order = parseOrderManually(snapshot);
+            if (order == null) return;
 
-        // Check if we have permission (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                Log.d("NOTIFICATION", "Permission denied for notifications.");
-                return;
+            if (isUpdate) {
+                // Check for status change
+                String oldStatus = orderStatusMap.get(order.getOrderKey());
+                String newStatus = order.getStatus();
+                if (oldStatus != null && !oldStatus.equals(newStatus)) {
+                    showStatusToast(order.getOrderKey(), newStatus);
+                }
+
+                // Update existing order
+                boolean found = false;
+                for (int i = 0; i < orderList.size(); i++) {
+                    if (orderList.get(i).getOrderKey().equals(order.getOrderKey())) {
+                        orderList.set(i, order);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    orderList.add(order);
+                }
+            } else {
+                // Add new order
+                orderList.add(order);
+            }
+
+            // Save status and update
+            orderStatusMap.put(order.getOrderKey(), order.getStatus());
+            sortAndUpdateOrders();
+
+        } catch (Exception e) {
+            Log.e("ClientOrders", "Error processing order: " + e.getMessage());
+        }
+        updateUI();
+    }
+
+    private void sortAndUpdateOrders() {
+        Collections.sort(orderList, new Comparator<OrderModel>() {
+            @Override
+            public int compare(OrderModel o1, OrderModel o2) {
+                return Long.compare(o2.getOrderDate(), o1.getOrderDate());
+            }
+        });
+        ordersAdapter.updateOrders(orderList);
+    }
+
+    private void updateUI() {
+        progressBar.setVisibility(View.GONE);
+        emptyLayout.setVisibility(orderList.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void showStatusToast(String orderKey, String newStatus) {
+        // Display only first 6 characters of order ID
+        String shortId = formatOrderId(orderKey);
+        Toast.makeText(requireContext(),
+                "Order #" + shortId + " is now " + newStatus,
+                Toast.LENGTH_LONG).show();
+    }
+
+    // Format order ID to show only first 6 characters
+    private String formatOrderId(String orderKey) {
+        if (orderKey == null || orderKey.isEmpty()) {
+            return "N/A";
+        }
+        // If order key is longer than 6 characters, show first 6
+        if (orderKey.length() > 6) {
+            return orderKey.substring(0, 6).toUpperCase();
+        }
+        return orderKey.toUpperCase();
+    }
+
+    private OrderModel parseOrderManually(DataSnapshot snapshot) {
+        try {
+            OrderModel order = new OrderModel();
+
+            String orderKey = snapshot.getKey();
+            if (orderKey == null) return null;
+            order.setOrderKey(orderKey);
+
+            // Check user
+            String userId = getValue(snapshot, "userId", String.class);
+            if (userId == null) {
+                userId = getValue(snapshot, "customerUid", String.class);
+            }
+
+            if (userId == null || !userId.equals(currentUser.getUid())) {
+                return null;
+            }
+
+            order.setUserId(userId);
+
+            // REMOVED: setCustomerName - di na kailangan
+            order.setPayment_method(getValue(snapshot, "payment_method", String.class));
+            order.setStatus(getValue(snapshot, "status", String.class));
+            order.setOrderType(getValue(snapshot, "orderType", String.class));
+            order.setDeliveryLocation(getValue(snapshot, "deliveryLocation", String.class));
+            order.setPickupBranch(getValue(snapshot, "pickupBranch", String.class));
+            order.setPickupTime(getValue(snapshot, "pickupTime", String.class));
+            order.setGcashReferenceNumber(getValue(snapshot, "gcashReferenceNumber", String.class));
+
+            // Parse items
+            if (snapshot.hasChild("items")) {
+                List<String> items = new ArrayList<>();
+                for (DataSnapshot itemSnap : snapshot.child("items").getChildren()) {
+                    String item = itemSnap.getValue(String.class);
+                    if (item != null) items.add(item);
+                }
+                order.setItems(items);
+            }
+
+            // Parse total price
+            order.setTotal_price(parseTotalPrice(snapshot));
+
+            // Parse order date
+            Long orderDate = getValue(snapshot, "orderDate", Long.class);
+            if (orderDate != null) {
+                order.setOrderDate(orderDate);
+            }
+
+            return order;
+
+        } catch (Exception e) {
+            Log.e("ClientOrders", "Parse error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private <T> T getValue(DataSnapshot snapshot, String child, Class<T> type) {
+        if (snapshot.hasChild(child)) {
+            return snapshot.child(child).getValue(type);
+        }
+        return null;
+    }
+
+    private double parseTotalPrice(DataSnapshot snapshot) {
+        if (!snapshot.hasChild("total_price")) return 0.0;
+
+        Object totalObj = snapshot.child("total_price").getValue();
+        if (totalObj instanceof Double) {
+            return (Double) totalObj;
+        } else if (totalObj instanceof Long) {
+            return ((Long) totalObj).doubleValue();
+        } else if (totalObj instanceof Integer) {
+            return ((Integer) totalObj).doubleValue();
+        } else if (totalObj instanceof String) {
+            try {
+                String str = (String) totalObj;
+                return Double.parseDouble(str.replace("₱", "").replace(",", "").trim());
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+        return 0.0;
+    }
+
+    private void showOrderReceipt(OrderModel order) {
+        StringBuilder receipt = new StringBuilder();
+        receipt.append("🧾 ORDER RECEIPT\n\n");
+        receipt.append("Order ID: ").append(formatOrderId(order.getOrderKey())).append("\n");
+        // REMOVED: Customer name line
+        receipt.append("Date: ").append(new java.text.SimpleDateFormat("MMM dd, yyyy hh:mm a")
+                .format(new java.util.Date(order.getOrderDate()))).append("\n");
+        receipt.append("Status: ").append(order.getStatus()).append("\n");
+        receipt.append("Payment: ").append(order.getPayment_method()).append("\n");
+        receipt.append("Type: ").append(order.getOrderType()).append("\n\n");
+
+        receipt.append("Items:\n");
+        if (order.getItems() != null) {
+            for (String item : order.getItems()) {
+                receipt.append("• ").append(item).append("\n");
             }
         }
 
-        Intent intent = new Intent(requireContext(), ClientOrdersFragment.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(requireContext(), 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        receipt.append("\nTotal: ").append(order.getFormattedTotalForDisplay()).append("\n");
 
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Order Status Updated")
-                .setContentText("Order " + orderKey + " is now " + newStatus)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setSound(soundUri); // sound for pre-Oreo
-
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(requireContext());
-        int notificationId = (orderKey != null) ? orderKey.hashCode() : (int) System.currentTimeMillis();
-        notificationManager.notify(notificationId, builder.build());
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "Order Status";
-            String description = "Notifications for order status updates";
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-
-            Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-            channel.setSound(soundUri, audioAttributes); // sound for Oreo+
-
-            NotificationManager notificationManager = requireContext().getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
+        if (order.getDeliveryLocation() != null && !order.getDeliveryLocation().isEmpty()) {
+            receipt.append("Location: ").append(order.getDeliveryLocation()).append("\n");
         }
+
+        if (order.isGcash() && order.getGcashReferenceNumber() != null && !order.getGcashReferenceNumber().isEmpty()) {
+            receipt.append("GCash Ref: ").append(order.getGcashReferenceNumber()).append("\n");
+        }
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Order Receipt")
+                .setMessage(receipt.toString())
+                .setPositiveButton("OK", null)
+                .show();
     }
 }

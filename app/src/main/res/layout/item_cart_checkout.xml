@@ -34,18 +34,30 @@
             android:maxLines="1"
             android:ellipsize="end"/>
 
-        <!-- Item Description -->
+        <!-- Item Description (for add-ons) -->
         <TextView
             android:id="@+id/txtItemDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Item description here"
-            android:textSize="14sp"
+            android:text=""
+            android:textSize="13sp"
             android:textColor="@color/text_secondary"
             android:layout_marginTop="4dp"
-            android:lineSpacingExtra="2dp"
-            android:maxLines="2"
-            android:ellipsize="end"/>
+            android:lineSpacingExtra="1dp"
+            android:visibility="gone"/>
+
+        <!-- Add-ons Container -->
+        <LinearLayout
+            android:id="@+id/containerAddons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <!-- Add-ons will be added dynamically here -->
+
+        </LinearLayout>
 
         <!-- Quantity and Price -->
         <LinearLayout
@@ -79,10 +91,9 @@
                 android:text="₱0"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="@color/primary"/>
+                android:textColor="@color/primary_color"/>
 
         </LinearLayout>
 
     </LinearLayout>
-
 </androidx.cardview.widget.CardView>

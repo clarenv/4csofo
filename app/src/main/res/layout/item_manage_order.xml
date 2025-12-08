@@ -5,87 +5,198 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="@color/background_card"
+    android:background="#FFFFFF"
     android:layout_marginBottom="8dp"
+    android:layout_marginHorizontal="8dp"
     android:elevation="2dp">
 
-    <!-- Order ID -->
-    <TextView
-        android:id="@+id/tvOrderId"
+    <!-- Header Row with Order ID and Status Badge -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Order ID"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:textSize="16sp"
-        android:paddingBottom="4dp" />
+        android:orientation="horizontal"
+        android:paddingBottom="4dp">
+
+        <!-- Order ID -->
+        <TextView
+            android:id="@+id/tvOrderId"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Order #1"
+            android:textStyle="bold"
+            android:textColor="#212121"
+            android:textSize="16sp" />
+
+        <!-- Status Badge -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pending"
+            android:textColor="#FFFFFF"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:textSize="12sp" />
+
+    </LinearLayout>
 
     <!-- Customer Name -->
-    <TextView
-        android:id="@+id/tvCustomer"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Customer Name"
-        android:textColor="@color/text_secondary"
-        android:paddingBottom="4dp" />
+        android:orientation="horizontal"
+        android:paddingBottom="2dp">
 
-    <!-- Total Price -->
-    <TextView
-        android:id="@+id/tvTotalPrice"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Customer: "
+            android:textColor="#757575"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvCustomer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Customer Name"
+            android:textColor="#757575"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- ORDER TYPE -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Total Price"
-        android:textColor="@color/text_primary"
-        android:paddingBottom="4dp" />
+        android:orientation="horizontal"
+        android:paddingBottom="2dp">
 
-    <!-- Payment Method -->
-    <TextView
-        android:id="@+id/tvPayment"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Type: "
+            android:textColor="#757575"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvOrderType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Delivery"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingEnd="16dp" />
+
+    </LinearLayout>
+
+    <!-- DELIVERY LOCATION (SHOW ONLY FOR DELIVERY ORDERS) -->
+    <LinearLayout
+        android:id="@+id/locationSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Payment"
-        android:textColor="@color/text_secondary"
-        android:paddingBottom="4dp" />
+        android:orientation="horizontal"
+        android:paddingBottom="4dp"
+        android:visibility="gone">
 
-    <!-- Status -->
-    <TextView
-        android:id="@+id/tvStatus"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📍 "
+            android:textColor="#10A048"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvLocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Delivery address"
+            android:textColor="#10A048"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+    <!-- Order Details Row -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Status"
-        android:textColor="@color/text_primary"
-        android:paddingBottom="4dp" />
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
 
-    <!-- Visual Progress Dots -->
+        <!-- Total Price -->
+        <TextView
+            android:id="@+id/tvTotalPrice"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="₱0.00"
+            android:textColor="#212121"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Payment Method -->
+        <TextView
+            android:id="@+id/tvPayment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="COD"
+            android:textColor="#757575"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Progress Dots -->
     <TextView
         android:id="@+id/tvProgress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="●○○○"
-        android:textColor="@color/primary"
-        android:textSize="16sp"
-        android:paddingBottom="8dp" />
+        android:text="● ○ ○ ○ ○"
+        android:textSize="14sp"
+        android:paddingBottom="12dp" />
 
-    <!-- Update Button -->
+    <!-- Next Status Button -->
     <Button
         android:id="@+id/btnUpdateStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Next Status"
-        android:layout_gravity="end"
-        android:padding="6dp"
-        android:backgroundTint="@color/primary"
-        android:textColor="@color/text_white" />
-
-    <!-- Optional: GCash Proof Image -->
-    <ImageView
-        android:id="@+id/imgGcashProof"
         android:layout_width="match_parent"
-        android:layout_height="180dp"
-        android:scaleType="centerInside"
-        android:layout_marginTop="8dp"
-        android:background="@color/background_light"
-        android:contentDescription="GCash Proof"
-        android:visibility="gone" />
+        android:layout_height="wrap_content"
+        android:text="Mark as Accepted"
+        android:textColor="#FFFFFF"
+        android:paddingVertical="10dp"
+        android:textSize="14sp" />
+
+    <!-- GCash Proof Section (Visible only for GCash orders) -->
+    <LinearLayout
+        android:id="@+id/gcashSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GCash Proof"
+            android:textColor="#757575"
+            android:textSize="13sp"
+            android:paddingBottom="4dp" />
+
+        <ImageView
+            android:id="@+id/imgGcashProof"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:scaleType="centerCrop"
+            android:background="#FAFAFA"
+            android:contentDescription="GCash Proof"
+            android:padding="4dp" />
+
+    </LinearLayout>
 
 </LinearLayout>

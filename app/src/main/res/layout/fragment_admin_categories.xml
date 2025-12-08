@@ -1,93 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F7F7">
+    android:background="@color/background_screen">
 
     <!-- Category Selector -->
-    <TextView
-        android:text="Select Category"
-        android:textStyle="bold"
-        android:textSize="16sp"
-        android:layout_marginBottom="4dp"
-        android:textColor="#333333"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <Spinner
-        android:id="@+id/spinnerCategories"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/spinner_background"
-        android:padding="12dp"
-        android:layout_marginBottom="16dp"/>
-
-    <!-- Foods Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@color/background_white">
 
         <TextView
-            android:text="Foods"
+            android:text="Select Category"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:textColor="@color/text_primary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Spinner
+            android:id="@+id/spinnerCategories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:text="Food Items"
             android:textStyle="bold"
             android:textSize="18sp"
-            android:textColor="#333333"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"/>
-
-        <!-- Optional: Add item count -->
-        <TextView
-            android:id="@+id/tvItemCount"
-            android:text="0 items"
-            android:textSize="14sp"
-            android:textColor="#666666"
+            android:textColor="@color/text_primary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
+
     </LinearLayout>
 
-    <!-- Foods List Container -->
-    <RelativeLayout
+    <!-- Foods List -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#FFFFFF"
-        android:padding="4dp">
+        android:layout_weight="1">
 
-        <!-- Empty State -->
         <TextView
             android:id="@+id/tvEmptyState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
+            android:layout_gravity="center"
             android:text="No food items found"
             android:textSize="16sp"
-            android:textColor="#999999"
+            android:textColor="@color/text_secondary"
             android:gravity="center"
             android:padding="32dp"
             android:visibility="gone"/>
 
-        <!-- Progress Bar -->
-        <ProgressBar
-            android:id="@+id/progressBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:visibility="gone"/>
-
-        <!-- Foods List -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewFoods"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:padding="4dp"/>
+            android:padding="8dp"/>
 
-    </RelativeLayout>
+    </FrameLayout>
 
 </LinearLayout>

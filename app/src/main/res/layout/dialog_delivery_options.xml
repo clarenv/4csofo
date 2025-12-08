@@ -1,79 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:padding="16dp"
-    android:layout_height="wrap_content">
+    android:layout_height="match_parent">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <!-- TITLE -->
         <TextView
-            android:id="@+id/txtCodTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cash on Delivery"
-            android:textColor="#000"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_gravity="center_horizontal"
-            android:paddingBottom="10dp" />
-
-        <!-- Radio Buttons -->
-        <RadioGroup
-            android:id="@+id/radioGroupCOD"
-            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:text="Select Delivery Method"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <RadioGroup
+            android:id="@+id/deliveryOptionsGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
             <RadioButton
                 android:id="@+id/rbCurrentLocation"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Use Current Location"
-                android:padding="6dp" />
+                android:layout_marginBottom="8dp"/>
 
             <RadioButton
                 android:id="@+id/rbSavedAddress"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Saved Address:"
-                android:padding="6dp" />
+                android:text="Saved Address"
+                android:layout_marginBottom="8dp"/>
 
             <RadioButton
                 android:id="@+id/rbManualInput"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Manual Input"
-                android:padding="6dp" />
-
+                android:text="Enter Address Manually"
+                android:layout_marginBottom="16dp"/>
         </RadioGroup>
 
-        <!-- Manual Input -->
-        <EditText
-            android:id="@+id/edtManualAddress"
+        <!-- Manual Input Section - HIDDEN BY DEFAULT -->
+        <LinearLayout
+            android:id="@+id/manualInputLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter full delivery address..."
-            android:padding="12dp"
+            android:orientation="vertical"
             android:layout_marginTop="8dp"
-            android:background="@android:drawable/edit_text"
-            android:enabled="false" />
+            android:visibility="gone">
 
-        <!-- INFO BOX -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Street/Purok/Sitio/House No:"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <EditText
+                android:id="@+id/edtStreetDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="e.g., Purok 5, Sitio Maligaya, House No. 123"
+                android:inputType="text"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Select Barangay:"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/spinnerBarangay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Town/City: Sta. Cruz, Laguna"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/holo_green_dark"
+                android:layout_marginTop="12dp"/>
+
+        </LinearLayout>
+
+        <!-- Full Address Preview -->
         <TextView
-            android:id="@+id/txtCodInfo"
+            android:id="@+id/txtFullAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Allowed Areas Only: Bubukal, Calios, Bagumbayan, Gatid — Santa Cruz Laguna."
-            android:textColor="#444"
-            android:textSize="13sp"
-            android:padding="10dp"
-            android:background="#EEEEEE"
-            android:layout_marginTop="12dp" />
+            android:text="Full Address:"
+            android:textSize="14sp"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/txtAreaInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📍 Delivery available only in Sta. Cruz, Laguna"
+            android:textSize="12sp"
+            android:textColor="@android:color/holo_red_dark"
+            android:layout_marginTop="16dp"/>
 
     </LinearLayout>
-
 </ScrollView>

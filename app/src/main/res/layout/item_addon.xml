@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/background_card"
+    android:layout_marginBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- First Row: Addon Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <CheckBox
+                android:id="@+id/cbAddon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:buttonTint="@color/primary"
+                android:layout_marginEnd="12dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvAddonName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Addon Name"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvAddonPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="₱50.00"
+                    android:textSize="14sp"
+                    android:textColor="@color/primary" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvAddonLimit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Max: 3"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Second Row: Quantity Controls (Hidden by default) -->
+        <LinearLayout
+            android:id="@+id/quantityControls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginStart="36dp">
+
+            <Button
+                android:id="@+id/btnAddonMinus"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="–"
+                android:textSize="14sp"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_white" />
+
+            <TextView
+                android:id="@+id/tvAddonQty"
+                android:layout_width="36dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="1"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:background="@color/background_light"
+                android:layout_marginHorizontal="4dp" />
+
+            <Button
+                android:id="@+id/btnAddonAdd"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="+"
+                android:textSize="14sp"
+                android:backgroundTint="@color/primary"
+                android:textColor="@color/text_white" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

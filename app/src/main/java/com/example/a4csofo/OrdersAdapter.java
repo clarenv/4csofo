@@ -1,28 +1,46 @@
 package com.example.a4csofo;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
 
     private Context context;
     private List<OrderModel> orderList;
+    private OnOrderClickListener listener;
+    private int expandedPosition = -1;
+
+    public interface OnOrderClickListener {
+        void onOrderClick(OrderModel order);
+        void onViewReceiptClick(OrderModel order);
+    }
+
+    public void setOnOrderClickListener(OnOrderClickListener listener) {
+        this.listener = listener;
+    }
 
     public OrdersAdapter(Context context, List<OrderModel> orderList) {
         this.context = context;
-        this.orderList = orderList;
+        this.orderList = new ArrayList<>(orderList);
+        sortByLatest();
     }
 
     @NonNull
@@ -33,83 +51,148 @@ public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewH
     }
 
     @Override
-    public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull OrderViewHolder holder, @SuppressLint("RecyclerView") int position) {
         OrderModel order = orderList.get(position);
         if (order == null) return;
 
-        // Customer name
-        holder.txtCustomer.setText(order.getCustomerName());
+        // Calculate order number (reverse position since sorted by latest)
+        int orderNumber = getItemCount() - position;
+        holder.bind(order, orderNumber);
 
-        // Total price
-        holder.txtTotal.setText(order.getFormattedTotal());
-
-        // Payment method → only the value
-        holder.txtPayment.setText(order.getPaymentText());
-
-        // Status
-        holder.txtStatus.setText(order.getStatus() != null ? order.getStatus() : "Pending");
-
-        // Transaction number
-        holder.txtTransaction.setText(order.getTransactionNumber());
-
-        // Items → only the value
-        holder.txtItems.setText(order.getItemsAsString());
-
-        // Pickup info → only the value
-        if ("pickup".equalsIgnoreCase(order.getOrderType())) {
-            holder.txtPickupInfo.setVisibility(View.VISIBLE);
-            holder.txtPickupInfo.setText(order.getPickupBranch() + " at " + order.getPickupTime());
-        } else {
-            holder.txtPickupInfo.setVisibility(View.GONE);
+        // Expand/collapse
+        boolean isExpanded = position == expandedPosition;
+        holder.layoutExpandContent.setVisibility(isExpanded ? View.VISIBLE : View.GONE);
+        if (holder.imgExpandArrow != null) {
+            holder.imgExpandArrow.setRotation(isExpanded ? 180f : 0f);
         }
 
-        // GCash info → only show if payment method is GCash
-        if ("GCash".equalsIgnoreCase(order.getPaymentMethod())) {
-            holder.txtGcashInfo.setVisibility(View.VISIBLE);
-            holder.txtGcashInfo.setText(order.getGcashReferenceNumber());
-            holder.qrImage.setVisibility(View.VISIBLE);
-        } else {
-            holder.txtGcashInfo.setVisibility(View.GONE);
-            holder.qrImage.setVisibility(View.GONE);
-        }
-
-        // 🔥 CLICK LISTENER FOR DELIVERING ORDERS TO OPEN MAP
+        // Click to expand/collapse
         holder.itemView.setOnClickListener(v -> {
-            if ("delivering".equalsIgnoreCase(order.getStatus())) {
-                double lat = order.getDeliveryLat();
-                double lng = order.getDeliveryLng();
-                if (lat != 0 && lng != 0) {
-                    String geoUri = "geo:" + lat + "," + lng + "?q=" + lat + "," + lng + "(Your+Order)";
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(geoUri));
-                    intent.setPackage("com.google.android.apps.maps");
-                    context.startActivity(intent);
-                } else {
-                    Toast.makeText(context, "Delivery location not available", Toast.LENGTH_SHORT).show();
-                }
+            int previous = expandedPosition;
+
+            if (isExpanded) {
+                expandedPosition = -1;
+            } else {
+                expandedPosition = position;
+            }
+
+            if (previous != -1) {
+                notifyItemChanged(previous);
+            }
+            notifyItemChanged(position);
+
+            if (listener != null) {
+                listener.onOrderClick(order);
             }
         });
+
+        // View Receipt button
+        if (holder.btnViewReceipt != null) {
+            holder.btnViewReceipt.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onViewReceiptClick(order);
+                }
+            });
+        }
     }
 
     @Override
     public int getItemCount() {
-        return orderList.size();
+        return orderList != null ? orderList.size() : 0;
+    }
+
+    public void sortByLatest() {
+        Collections.sort(orderList, new Comparator<OrderModel>() {
+            @Override
+            public int compare(OrderModel o1, OrderModel o2) {
+                return Long.compare(o2.getOrderDate(), o1.getOrderDate());
+            }
+        });
+        notifyDataSetChanged();
+    }
+
+    public void updateOrders(List<OrderModel> newOrders) {
+        this.orderList = new ArrayList<>(newOrders);
+        sortByLatest();
+        expandedPosition = -1;
+        notifyDataSetChanged();
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
-        TextView txtCustomer, txtTotal, txtPayment, txtStatus, txtTransaction, txtItems, txtPickupInfo, txtGcashInfo;
-        ImageView qrImage;
+        // Header views
+        TextView txtOrderNumber, txtOrderDate, txtStatus, txtTotal;
+
+        // Expandable content views
+        LinearLayout layoutExpandContent;
+        TextView txtPayment, txtItems;
+        ImageView imgExpandArrow;
+        Button btnViewReceipt;
 
         public OrderViewHolder(@NonNull View itemView) {
             super(itemView);
-            txtCustomer = itemView.findViewById(R.id.txtCustomer);
+
+            // Header views
+            txtOrderNumber = itemView.findViewById(R.id.txtOrderId); // Now shows Order #1, #2, etc.
             txtTotal = itemView.findViewById(R.id.txtTotal);
-            txtPayment = itemView.findViewById(R.id.txtPayment);
+            txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
             txtStatus = itemView.findViewById(R.id.txtStatus);
-            txtTransaction = itemView.findViewById(R.id.txtTransaction);
+
+            // Expandable content
+            layoutExpandContent = itemView.findViewById(R.id.layoutExpandContent);
+            txtPayment = itemView.findViewById(R.id.txtPayment);
             txtItems = itemView.findViewById(R.id.txtItems);
-            txtPickupInfo = itemView.findViewById(R.id.txtPickupInfo);
-            txtGcashInfo = itemView.findViewById(R.id.txtGcashInfo);
-            qrImage = itemView.findViewById(R.id.qrImage); // NEW: QR Image for GCash
+
+            // Optional views
+            try {
+                imgExpandArrow = itemView.findViewById(R.id.imgExpandArrow);
+            } catch (Exception e) {
+                imgExpandArrow = null;
+            }
+
+            try {
+                btnViewReceipt = itemView.findViewById(R.id.btnViewReceipt);
+            } catch (Exception e) {
+                btnViewReceipt = null;
+            }
+        }
+
+        public void bind(OrderModel order, int orderNumber) {
+            // Display Order #1, #2, #3, etc. (latest order = highest number)
+            txtOrderNumber.setText(String.format(Locale.getDefault(), "Order #%d", orderNumber));
+
+            // Total price
+            txtTotal.setText(order.getFormattedTotalForDisplay());
+
+            // Status with color
+            String status = order.getStatus() != null ? order.getStatus() : "Pending";
+            txtStatus.setText(status);
+            txtStatus.setTextColor(getStatusColor(status));
+
+            // Order date
+            if (order.getOrderDate() > 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault());
+                String date = sdf.format(new Date(order.getOrderDate()));
+                txtOrderDate.setText(date);
+            } else {
+                txtOrderDate.setText("Date N/A");
+            }
+
+            // Expandable content
+            txtPayment.setText(order.getPayment_method());
+            txtItems.setText(order.getItemsAsStringForDisplay());
+        }
+
+        private int getStatusColor(String status) {
+            switch (status.toLowerCase()) {
+                case "pending": return 0xFFFF9800; // Orange
+                case "accepted": case "verifying": return 0xFF2196F3; // Blue
+                case "preparing": return 0xFF9C27B0; // Purple
+                case "ready": return 0xFF4CAF50; // Green
+                case "delivering": return 0xFF00BCD4; // Cyan
+                case "completed": return 0xFF8BC34A; // Light Green
+                case "cancelled": return 0xFFF44336; // Red
+                default: return 0xFF757575; // Gray
+            }
         }
     }
 }

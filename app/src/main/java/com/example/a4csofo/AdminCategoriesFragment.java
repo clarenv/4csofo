@@ -1,10 +1,18 @@
 package com.example.a4csofo;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Vibrator;
+import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,14 +20,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.*;
 
 public class AdminCategoriesFragment extends Fragment {
@@ -31,6 +45,24 @@ public class AdminCategoriesFragment extends Fragment {
     private FoodAdapter foodAdapter;
     private Spinner spinnerCategories;
     private TextView tvEmptyState;
+
+    // SMART FEATURES
+    private static final int NAME_LIMIT = 50;
+    private static final int DESC_LIMIT = 200;
+    private static final int PREP_TIME_MIN = 1;
+    private static final int PREP_TIME_MAX = 999;
+    private static final double PRICE_MIN = 1;
+    private static final double PRICE_MAX = 10000;
+
+    // ActivityResultLaunchers for image picking
+    private ActivityResultLauncher<Intent> pickImageLauncher;
+    private ActivityResultLauncher<Intent> takePhotoLauncher;
+    private Bitmap selectedImageBitmap;
+    private String selectedImageBase64;
+
+    // References to current dialog views
+    private ImageView currentDialogImageView;
+    private LinearLayout currentDialogPlaceholderLayout;
 
     @SuppressLint("MissingInflatedId")
     @Nullable
@@ -67,6 +99,59 @@ public class AdminCategoriesFragment extends Fragment {
         });
 
         return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Initialize ActivityResultLaunchers
+        initializeImageLaunchers();
+    }
+
+    private void initializeImageLaunchers() {
+        // For gallery image picker
+        pickImageLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Uri imageUri = result.getData().getData();
+                        try {
+                            selectedImageBitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
+                            selectedImageBase64 = bitmapToBase64(selectedImageBitmap);
+                            showSuccessToast("Image selected");
+
+                            // Update the image in dialog immediately
+                            if (currentDialogImageView != null && currentDialogPlaceholderLayout != null) {
+                                updateImageInDialog(currentDialogImageView, currentDialogPlaceholderLayout, selectedImageBase64);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            Toast.makeText(getContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
+
+        // For camera photo
+        takePhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Bundle extras = result.getData().getExtras();
+                        if (extras != null) {
+                            selectedImageBitmap = (Bitmap) extras.get("data");
+                            selectedImageBase64 = bitmapToBase64(selectedImageBitmap);
+                            showSuccessToast("Photo taken");
+
+                            // Update the image in dialog immediately
+                            if (currentDialogImageView != null && currentDialogPlaceholderLayout != null) {
+                                updateImageInDialog(currentDialogImageView, currentDialogPlaceholderLayout, selectedImageBase64);
+                            }
+                        }
+                    }
+                }
+        );
     }
 
     private void loadFoods() {
@@ -173,16 +258,14 @@ public class AdminCategoriesFragment extends Fragment {
             holder.tvPrepTime.setText(food.getPrepTime() + " mins");
             holder.tvDesc.setText(food.getDescription());
 
-            String extrasText = "";
-            if (food.getAddOns() != null) extrasText += "Add-ons: " + String.join(", ", food.getAddOns()) + "\n";
-            if (food.getIngredients() != null) extrasText += "Ingredients: " + String.join(", ", food.getIngredients()) + "\n";
-            if (food.getServingSize() != null) extrasText += "Serving Size: " + food.getServingSize() + "\n";
-            extrasText += "Calories: " + food.getCalories();
-            holder.tvExtras.setText(extrasText);
-
-            if (food.getImageBase64() != null && !food.getImageBase64().isEmpty()) {
-                Bitmap bmp = base64ToBitmap(food.getImageBase64());
-                holder.ivFoodImage.setImageBitmap(bmp);
+            // Load image
+            if (food.getBase64Image() != null && !food.getBase64Image().isEmpty()) {
+                Bitmap bmp = base64ToBitmap(food.getBase64Image());
+                if (bmp != null) {
+                    holder.ivFoodImage.setImageBitmap(bmp);
+                } else {
+                    holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                }
             } else {
                 holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             }
@@ -192,12 +275,12 @@ public class AdminCategoriesFragment extends Fragment {
                 food.setAvailable(isChecked);
                 foodsRef.child(food.getKey()).child("available").setValue(isChecked)
                         .addOnSuccessListener(aVoid -> {
-                            Toast.makeText(getContext(), "Availability updated", Toast.LENGTH_SHORT).show();
+                            showSuccessToast("Availability updated");
                         });
             });
 
-            // Update button click - Shows update dialog
-            holder.btnUpdate.setOnClickListener(v -> showAdminUpdateFoodDialog(food, position));
+            // Update button click
+            holder.btnUpdate.setOnClickListener(v -> showSmartUpdateFoodDialog(food, position));
 
             // Delete button click
             holder.btnDelete.setOnClickListener(v -> {
@@ -207,7 +290,7 @@ public class AdminCategoriesFragment extends Fragment {
                         .setPositiveButton("Yes", (dialog, which) ->
                                 foodsRef.child(food.getKey()).removeValue()
                                         .addOnSuccessListener(aVoid -> {
-                                            Toast.makeText(getContext(), food.getName() + " deleted", Toast.LENGTH_SHORT).show();
+                                            showSuccessToast(food.getName() + " deleted");
                                         })
                                         .addOnFailureListener(e -> {
                                             Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -222,7 +305,7 @@ public class AdminCategoriesFragment extends Fragment {
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
             ImageView ivFoodImage;
-            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime, tvExtras;
+            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime;
             Button btnUpdate, btnDelete;
             Switch switchAvailable;
 
@@ -234,7 +317,6 @@ public class AdminCategoriesFragment extends Fragment {
                 tvDesc = itemView.findViewById(R.id.tvFoodDesc);
                 tvCategory = itemView.findViewById(R.id.tvFoodCategory);
                 tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
-                tvExtras = itemView.findViewById(R.id.tvFoodExtras);
                 btnUpdate = itemView.findViewById(R.id.btnUpdate);
                 btnDelete = itemView.findViewById(R.id.btnDelete);
                 switchAvailable = itemView.findViewById(R.id.switchAvailable);
@@ -242,7 +324,7 @@ public class AdminCategoriesFragment extends Fragment {
         }
     }
 
-    private void showAdminUpdateFoodDialog(ItemAdminCategory food, int position) {
+    private void showSmartUpdateFoodDialog(ItemAdminCategory food, int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Update " + food.getName());
 
@@ -250,17 +332,25 @@ public class AdminCategoriesFragment extends Fragment {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_admin_update_food, null);
         builder.setView(dialogView);
 
-        // Initialize all form fields
+        // Initialize form fields
+        ImageView ivCurrentFoodImage = dialogView.findViewById(R.id.ivCurrentFoodImage);
+        LinearLayout placeholderLayout = dialogView.findViewById(R.id.placeholderLayout);
+        FloatingActionButton fabPickImage = dialogView.findViewById(R.id.fabPickImage);
+
         EditText etName = dialogView.findViewById(R.id.etName);
         EditText etPrice = dialogView.findViewById(R.id.etPrice);
         EditText etDescription = dialogView.findViewById(R.id.etDescription);
         EditText etPrepTime = dialogView.findViewById(R.id.etPrepTime);
         Spinner spCategory = dialogView.findViewById(R.id.spCategory);
-        EditText etAddOns = dialogView.findViewById(R.id.etAddOns);
-        EditText etIngredients = dialogView.findViewById(R.id.etIngredients);
-        EditText etServingSize = dialogView.findViewById(R.id.etServingSize);
-        EditText etCalories = dialogView.findViewById(R.id.etCalories);
-        Switch switchAvailable = dialogView.findViewById(R.id.switchAvailable);
+
+        SwitchMaterial switchAvailable = dialogView.findViewById(R.id.switchAvailable);
+
+        // Store original image
+        selectedImageBase64 = food.getBase64Image();
+        selectedImageBitmap = null;
+
+        // Load current image and show/hide placeholder
+        updateImageInDialog(ivCurrentFoodImage, placeholderLayout, food.getBase64Image());
 
         // Set current values
         etName.setText(food.getName() != null ? food.getName() : "");
@@ -268,14 +358,8 @@ public class AdminCategoriesFragment extends Fragment {
         etDescription.setText(food.getDescription() != null ? food.getDescription() : "");
         etPrepTime.setText(food.getPrepTime() != null ? food.getPrepTime() : "");
 
-        // Set up category spinner with available categories
-        List<String> categories = new ArrayList<>();
-        categories.add("Main Dish");
-        categories.add("Drinks");
-        categories.add("Dessert");
-        categories.add("Snacks");
-        categories.add("Appetizer");
-
+        // Set up category spinner
+        List<String> categories = Arrays.asList("Main Dish", "Drinks", "Dessert", "Snacks", "Appetizer");
         ArrayAdapter<String> categoryAdapter = new ArrayAdapter<>(
                 getContext(),
                 android.R.layout.simple_spinner_item,
@@ -286,103 +370,50 @@ public class AdminCategoriesFragment extends Fragment {
 
         // Set selected category
         if (food.getCategory() != null) {
-            for (int i = 0; i < categories.size(); i++) {
-                if (categories.get(i).equals(food.getCategory())) {
-                    spCategory.setSelection(i);
-                    break;
-                }
-            }
+            int pos = categories.indexOf(food.getCategory());
+            if (pos >= 0) spCategory.setSelection(pos);
         }
 
-        // Set other fields
-        if (food.getAddOns() != null && !food.getAddOns().isEmpty()) {
-            etAddOns.setText(String.join(", ", food.getAddOns()));
-        }
-
-        if (food.getIngredients() != null && !food.getIngredients().isEmpty()) {
-            etIngredients.setText(String.join(", ", food.getIngredients()));
-        }
-
-        etServingSize.setText(food.getServingSize() != null ? food.getServingSize() : "");
-        etCalories.setText(String.valueOf(food.getCalories()));
         switchAvailable.setChecked(food.isAvailable());
+
+        // Setup image selection - Store references to current dialog views
+        fabPickImage.setOnClickListener(v -> {
+            // Store references to current dialog views
+            currentDialogImageView = ivCurrentFoodImage;
+            currentDialogPlaceholderLayout = placeholderLayout;
+
+            // Create options dialog for image source
+            String[] options = {"Take Photo", "Choose from Gallery", "Cancel"};
+            AlertDialog.Builder imageDialog = new AlertDialog.Builder(getContext());
+            imageDialog.setTitle("Change Food Image");
+            imageDialog.setItems(options, (dialog, which) -> {
+                if (which == 0) {
+                    // Take Photo
+                    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+                        takePhotoLauncher.launch(intent);
+                    } else {
+                        Toast.makeText(getContext(), "No camera app found", Toast.LENGTH_SHORT).show();
+                    }
+                } else if (which == 1) {
+                    // Choose from Gallery
+                    Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    pickImageLauncher.launch(intent);
+                }
+                // which == 2 is Cancel, do nothing
+            });
+            imageDialog.show();
+        });
+
+        // Setup smart input limitations
+        setupSmartInputLimitationsForDialog(etName, etPrice, etPrepTime, etDescription);
 
         // Set up the Update button
         builder.setPositiveButton("Update", (dialog, which) -> {
-            // Get updated values
-            String name = etName.getText().toString().trim();
-            String priceStr = etPrice.getText().toString().trim();
-            String description = etDescription.getText().toString().trim();
-            String prepTime = etPrepTime.getText().toString().trim();
-            String category = spCategory.getSelectedItem().toString();
-            String addOnsStr = etAddOns.getText().toString().trim();
-            String ingredientsStr = etIngredients.getText().toString().trim();
-            String servingSize = etServingSize.getText().toString().trim();
-            String caloriesStr = etCalories.getText().toString().trim();
-            boolean available = switchAvailable.isChecked();
-
-            // Validate inputs
-            if (name.isEmpty()) {
-                Toast.makeText(getContext(), "Please enter food name", Toast.LENGTH_SHORT).show();
-                return;
+            if (validateAndUpdateFood(food, position, etName, etPrice, etDescription,
+                    etPrepTime, spCategory, switchAvailable)) {
+                dialog.dismiss();
             }
-
-            if (priceStr.isEmpty()) {
-                Toast.makeText(getContext(), "Please enter price", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            double price;
-            try {
-                price = Double.parseDouble(priceStr);
-            } catch (NumberFormatException e) {
-                Toast.makeText(getContext(), "Invalid price format", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            int calories = 0;
-            if (!caloriesStr.isEmpty()) {
-                try {
-                    calories = Integer.parseInt(caloriesStr);
-                } catch (NumberFormatException e) {
-                    Toast.makeText(getContext(), "Invalid calories format", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-            }
-
-            // Convert comma-separated strings to lists
-            List<String> addOns = null;
-            if (!addOnsStr.isEmpty()) {
-                addOns = Arrays.asList(addOnsStr.split("\\s*,\\s*"));
-            }
-
-            List<String> ingredients = null;
-            if (!ingredientsStr.isEmpty()) {
-                ingredients = Arrays.asList(ingredientsStr.split("\\s*,\\s*"));
-            }
-
-            // Update the food object
-            food.setName(name);
-            food.setPrice(price);
-            food.setDescription(description);
-            food.setPrepTime(prepTime);
-            food.setCategory(category);
-            food.setAddOns(addOns);
-            food.setIngredients(ingredients);
-            food.setServingSize(servingSize);
-            food.setCalories(calories);
-            food.setAvailable(available);
-
-            // Update in Firebase
-            foodsRef.child(food.getKey()).setValue(food)
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(getContext(), food.getName() + " updated successfully", Toast.LENGTH_SHORT).show();
-                        // Refresh the adapter
-                        foodAdapter.notifyItemChanged(position);
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(getContext(), "Failed to update: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
         });
 
         // Set up the Cancel button
@@ -393,8 +424,336 @@ public class AdminCategoriesFragment extends Fragment {
         dialog.show();
     }
 
-    public static Bitmap base64ToBitmap(String base64Str) {
+    // Helper method to update image in dialog
+    private void updateImageInDialog(ImageView imageView, LinearLayout placeholderLayout, String base64Image) {
+        if (base64Image != null && !base64Image.isEmpty()) {
+            Bitmap bmp = base64ToBitmap(base64Image);
+            if (bmp != null) {
+                imageView.setImageBitmap(bmp);
+                placeholderLayout.setVisibility(View.GONE);
+            } else {
+                imageView.setImageResource(R.drawable.ic_placeholder);
+                placeholderLayout.setVisibility(View.VISIBLE);
+            }
+        } else {
+            imageView.setImageResource(R.drawable.ic_placeholder);
+            placeholderLayout.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void setupSmartInputLimitationsForDialog(EditText etName, EditText etPrice,
+                                                     EditText etPrepTime, EditText etDescription) {
+        // Food Name limit
+        setupTextLimiter(etName, NAME_LIMIT, "Food Name");
+
+        // Description limit
+        setupTextLimiter(etDescription, DESC_LIMIT, "Description");
+
+        // Prep Time (1-999)
+        etPrepTime.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        setupNumberLimiter(etPrepTime, PREP_TIME_MIN, PREP_TIME_MAX, "Prep Time");
+
+        // Price (1-10000, 2 decimals)
+        etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER |
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        setupPriceLimiter(etPrice, PRICE_MIN, PRICE_MAX);
+    }
+
+    private void setupTextLimiter(EditText editText, int maxLength, String fieldName) {
+        editText.addTextChangedListener(new TextWatcher() {
+            private String lastValidText = "";
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (s != null) {
+                    lastValidText = s.toString();
+                }
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String currentText = s != null ? s.toString() : "";
+
+                if (currentText.length() > maxLength) {
+                    editText.removeTextChangedListener(this);
+                    editText.setText(lastValidText);
+                    editText.setSelection(lastValidText.length());
+                    editText.addTextChangedListener(this);
+                    showCharacterLimitError(editText, fieldName, maxLength);
+                } else {
+                    lastValidText = currentText;
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private void setupNumberLimiter(EditText editText, int min, int max, String fieldName) {
+        editText.addTextChangedListener(new TextWatcher() {
+            private String lastValidText = "";
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (s != null) {
+                    lastValidText = s.toString();
+                }
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String currentText = s != null ? s.toString() : "";
+
+                if (currentText.isEmpty()) {
+                    lastValidText = "";
+                    return;
+                }
+
+                try {
+                    int value = Integer.parseInt(currentText);
+
+                    if (value > max) {
+                        editText.removeTextChangedListener(this);
+                        editText.setText(String.valueOf(max));
+                        editText.setSelection(String.valueOf(max).length());
+                        editText.addTextChangedListener(this);
+                        showError(editText, fieldName + " maximum is " + max);
+                        vibrate();
+                    } else if (value < min && !currentText.isEmpty()) {
+                        editText.removeTextChangedListener(this);
+                        editText.setText(String.valueOf(min));
+                        editText.setSelection(String.valueOf(min).length());
+                        editText.addTextChangedListener(this);
+                        showError(editText, fieldName + " minimum is " + min);
+                        vibrate();
+                    } else {
+                        lastValidText = currentText;
+                    }
+                } catch (NumberFormatException e) {
+                    editText.removeTextChangedListener(this);
+                    editText.setText(lastValidText);
+                    editText.setSelection(lastValidText.length());
+                    editText.addTextChangedListener(this);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private void setupPriceLimiter(EditText editText, double min, double max) {
+        editText.addTextChangedListener(new TextWatcher() {
+            private String lastValidText = "";
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (s != null) {
+                    lastValidText = s.toString();
+                }
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String currentText = s != null ? s.toString() : "";
+
+                // Prevent multiple decimals
+                int decimalCount = 0;
+                for (char c : currentText.toCharArray()) {
+                    if (c == '.') decimalCount++;
+                }
+                if (decimalCount > 1) {
+                    editText.removeTextChangedListener(this);
+                    editText.setText(lastValidText);
+                    editText.setSelection(lastValidText.length());
+                    editText.addTextChangedListener(this);
+                    return;
+                }
+
+                // Limit to 2 decimal places
+                if (currentText.contains(".")) {
+                    String[] parts = currentText.split("\\.");
+                    if (parts.length > 1 && parts[1].length() > 2) {
+                        editText.removeTextChangedListener(this);
+                        String formatted = parts[0] + "." + parts[1].substring(0, 2);
+                        editText.setText(formatted);
+                        editText.setSelection(formatted.length());
+                        editText.addTextChangedListener(this);
+                        return;
+                    }
+                }
+
+                // Validate range
+                if (!currentText.isEmpty() && !currentText.equals(".")) {
+                    try {
+                        double value = Double.parseDouble(currentText);
+                        if (value > max) {
+                            editText.removeTextChangedListener(this);
+                            editText.setText(String.valueOf(max));
+                            editText.setSelection(String.valueOf(max).length());
+                            editText.addTextChangedListener(this);
+                            showError(editText, "Price maximum is ₱" + max);
+                            vibrate();
+                        } else if (value < min) {
+                            editText.removeTextChangedListener(this);
+                            editText.setText(String.valueOf(min));
+                            editText.setSelection(String.valueOf(min).length());
+                            editText.addTextChangedListener(this);
+                            showError(editText, "Price minimum is ₱" + min);
+                            vibrate();
+                        } else {
+                            lastValidText = currentText;
+                        }
+                    } catch (NumberFormatException e) {
+                        editText.removeTextChangedListener(this);
+                        editText.setText(lastValidText);
+                        editText.setSelection(lastValidText.length());
+                        editText.addTextChangedListener(this);
+                    }
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private boolean validateAndUpdateFood(ItemAdminCategory food, int position,
+                                          EditText etName, EditText etPrice, EditText etDescription,
+                                          EditText etPrepTime, Spinner spCategory,
+                                          SwitchMaterial switchAvailable) {
+
+        // Get values
+        String name = etName.getText().toString().trim();
+        String priceStr = etPrice.getText().toString().trim();
+        String description = etDescription.getText().toString().trim();
+        String prepTime = etPrepTime.getText().toString().trim();
+        String category = spCategory.getSelectedItem().toString();
+        boolean available = switchAvailable.isChecked();
+
+        // Validate
+        if (name.isEmpty()) {
+            showError(etName, "Food name is required");
+            return false;
+        }
+
+        if (priceStr.isEmpty()) {
+            showError(etPrice, "Price is required");
+            return false;
+        }
+
+        if (prepTime.isEmpty()) {
+            showError(etPrepTime, "Prep time is required");
+            return false;
+        }
+
+        // Validate limits
+        if (name.length() > NAME_LIMIT) {
+            showError(etName, "Max " + NAME_LIMIT + " characters");
+            return false;
+        }
+
+        if (description.length() > DESC_LIMIT) {
+            showError(etDescription, "Max " + DESC_LIMIT + " characters");
+            return false;
+        }
+
+        double price;
         try {
+            price = Double.parseDouble(priceStr);
+            if (price < PRICE_MIN || price > PRICE_MAX) {
+                showError(etPrice, "Price must be ₱" + PRICE_MIN + " - ₱" + PRICE_MAX);
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            showError(etPrice, "Invalid price");
+            return false;
+        }
+
+        try {
+            int prepTimeVal = Integer.parseInt(prepTime);
+            if (prepTimeVal < PREP_TIME_MIN || prepTimeVal > PREP_TIME_MAX) {
+                showError(etPrepTime, "Prep time must be " + PREP_TIME_MIN + "-" + PREP_TIME_MAX + " mins");
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            showError(etPrepTime, "Invalid prep time");
+            return false;
+        }
+
+        // Update food object
+        food.setName(name);
+        food.setPrice(price);
+        food.setDescription(description);
+        food.setPrepTime(prepTime);
+        food.setCategory(category);
+        food.setAvailable(available);
+
+        // Update image if new one was selected
+        if (selectedImageBase64 != null) {
+            food.setBase64Image(selectedImageBase64);
+        }
+
+        // Update in Firebase
+        foodsRef.child(food.getKey()).setValue(food)
+                .addOnSuccessListener(aVoid -> {
+                    showSuccessToast(food.getName() + " updated");
+                    foodAdapter.notifyItemChanged(position);
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+
+        return true;
+    }
+
+    private void showCharacterLimitError(EditText field, String fieldName, int limit) {
+        showError(field, fieldName + " cannot exceed " + limit + " characters");
+        vibrate();
+    }
+
+    private void showError(EditText field, String message) {
+        field.setError(message);
+        field.requestFocus();
+        vibrate();
+    }
+
+    private void showSuccessToast(String message) {
+        Toast.makeText(getContext(), "✅ " + message, Toast.LENGTH_SHORT).show();
+    }
+
+    private void vibrate() {
+        try {
+            if (getActivity() != null) {
+                Vibrator vibrator = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        vibrator.vibrate(android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        vibrator.vibrate(50);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+    }
+
+    public static Bitmap base64ToBitmap(String base64Str) {
+        if (base64Str == null || base64Str.isEmpty()) {
+            return null;
+        }
+
+        try {
+            // Remove data URL prefix if present
+            if (base64Str.startsWith("data:image")) {
+                base64Str = base64Str.substring(base64Str.indexOf(",") + 1);
+            }
+
             byte[] decoded = Base64.decode(base64Str, Base64.DEFAULT);
             return BitmapFactory.decodeByteArray(decoded, 0, decoded.length);
         } catch (Exception e) {
@@ -403,17 +762,23 @@ public class AdminCategoriesFragment extends Fragment {
         }
     }
 
+    private String bitmapToBase64(Bitmap bitmap) {
+        if (bitmap == null) return null;
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
     public static class ItemAdminCategory {
-        private String key, category, description, name, prepTime, servingSize;
+        private String key, category, description, name, prepTime;
         private double price;
-        private int calories;
-        private List<String> addOns, ingredients;
-        private String imageBase64;
+        private String base64Image;
         private boolean available = true;
 
         public ItemAdminCategory() {}
 
-        // Getters and setters
         public String getKey() { return key; }
         public void setKey(String key) { this.key = key; }
 
@@ -432,22 +797,10 @@ public class AdminCategoriesFragment extends Fragment {
         public double getPrice() { return price; }
         public void setPrice(double price) { this.price = price; }
 
-        public String getImageBase64() { return imageBase64; }
-        public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
+        public String getBase64Image() { return base64Image; }
+        public void setBase64Image(String base64Image) { this.base64Image = base64Image; }
 
         public boolean isAvailable() { return available; }
         public void setAvailable(boolean available) { this.available = available; }
-
-        public List<String> getAddOns() { return addOns; }
-        public void setAddOns(List<String> addOns) { this.addOns = addOns; }
-
-        public List<String> getIngredients() { return ingredients; }
-        public void setIngredients(List<String> ingredients) { this.ingredients = ingredients; }
-
-        public String getServingSize() { return servingSize; }
-        public void setServingSize(String servingSize) { this.servingSize = servingSize; }
-
-        public int getCalories() { return calories; }
-        public void setCalories(int calories) { this.calories = calories; }
     }
 }
