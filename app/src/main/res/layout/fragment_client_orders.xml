@@ -16,20 +16,19 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/primary"
-            app:title="My Orders"
-            app:titleTextColor="@android:color/white">
+            android:background="@color/primary">
 
-            <!-- Cart Icon on Toolbar -->
-            <ImageView
-                android:id="@+id/ivCartIcon"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@drawable/ic_cart"
-                android:contentDescription="Cart Icon"
-                android:layout_gravity="end"
-                android:clickable="true"
-                android:focusable="true"/>
+            <!-- Centered title -->
+            <TextView
+                android:id="@+id/toolbarTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="My Orders"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:gravity="center"/>
+
         </androidx.appcompat.widget.Toolbar>
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -91,7 +90,5 @@
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-
-    <!-- BottomNavigationView removed -->
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

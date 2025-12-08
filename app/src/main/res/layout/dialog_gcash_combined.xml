@@ -16,27 +16,42 @@
             android:layout_height="200dp"
             android:layout_gravity="center"
             android:src="@drawable/gcash_qr"
-            android:contentDescription="QR Code"/>
+            android:contentDescription="QR Code"
+            android:layout_marginBottom="20dp"/>
 
         <!-- DELIVERY LOCATION OPTIONS -->
-        <RadioButton
-            android:id="@+id/rbCurrentLocation"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Use Current Location"/>
+            android:text="Select Delivery Location"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp"/>
 
-        <RadioButton
-            android:id="@+id/rbSavedAddress"
-            android:layout_width="wrap_content"
+        <RadioGroup
+            android:id="@+id/rgLocation"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Saved Address"
-            android:enabled="false"/>
+            android:orientation="vertical">
 
-        <RadioButton
-            android:id="@+id/rbManualInput"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Enter Address Manually"/>
+            <RadioButton
+                android:id="@+id/rbCurrentLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Use Current Location"/>
+
+            <RadioButton
+                android:id="@+id/rbSavedAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saved Address"
+                android:enabled="false"/>
+
+            <RadioButton
+                android:id="@+id/rbManualInput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enter Address Manually"/>
+        </RadioGroup>
 
         <EditText
             android:id="@+id/edtManualAddress"
@@ -44,27 +59,31 @@
             android:layout_height="wrap_content"
             android:hint="Enter address"
             android:enabled="false"
-            android:padding="10dp"/>
+            android:padding="10dp"
+            android:layout_marginBottom="20dp"/>
 
-        <!-- GCash Proof & Ref Number -->
+        <!-- GCash Proof & Reference Number -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Upload GCash Screenshot"
-            android:paddingTop="10dp"/>
+            android:textStyle="bold"
+            android:paddingTop="10dp"
+            android:layout_marginBottom="10dp"/>
 
         <Button
             android:id="@+id/btnChooseImage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Choose Image"/>
+            android:text="Choose Image"
+            android:layout_marginBottom="10dp"/>
 
         <ImageView
             android:id="@+id/imgPreview"
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:scaleType="centerCrop"
-            android:layout_marginTop="10dp"/>
+            android:layout_marginBottom="20dp"/>
 
         <EditText
             android:id="@+id/edtReferenceNumber"
@@ -72,7 +91,8 @@
             android:layout_height="wrap_content"
             android:hint="Enter Reference Number"
             android:padding="10dp"
-            android:inputType="number"/>
+            android:inputType="number"
+            android:layout_marginBottom="20dp"/>
 
         <Button
             android:id="@+id/btnSavePayment"

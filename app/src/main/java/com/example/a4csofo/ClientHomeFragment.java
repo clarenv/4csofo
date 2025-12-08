@@ -3,7 +3,10 @@ package com.example.a4csofo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,8 +25,10 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,38 +38,33 @@ public class ClientHomeFragment extends Fragment {
     private TextView tvWelcome;
     private ImageView ivLogo;
     private RecyclerView recyclerMain;
-    private LinearLayout menuOrdersLayout; // KEEP THIS BUT DON'T USE IT
+    private LinearLayout menuOrdersLayout;
     private AppBarLayout appBarLayout;
     private EditText searchEditText;
 
-    // NEW: Category buttons
     private LinearLayout btnMainDish, btnDrinks, btnSnacks, btnDesserts;
-    private String currentCategory = "All"; // Track current category
+    private String currentCategory = "all";
 
     private FirebaseAuth auth;
     private List<FoodItem> foodList = new ArrayList<>();
     private List<FoodItem> filteredFoodList = new ArrayList<>();
     private FoodAdapter foodAdapter;
 
-    public ClientHomeFragment() {
-        // Required empty public constructor
-    }
+    public ClientHomeFragment() {}
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_client_home, container, false);
 
-        // Initialize views
         auth = FirebaseAuth.getInstance();
         tvWelcome = view.findViewById(R.id.tvWelcome);
         ivLogo = view.findViewById(R.id.ivLogo);
         recyclerMain = view.findViewById(R.id.recyclerMain);
-        menuOrdersLayout = view.findViewById(R.id.menuOrdersLayout); // KEEP BUT COMMENT OUT LATER
+        menuOrdersLayout = view.findViewById(R.id.menuOrdersLayout);
         searchEditText = view.findViewById(R.id.etSearch);
         appBarLayout = view.findViewById(R.id.appBarLayout);
 
-        // NEW: Initialize category buttons
         btnMainDish = view.findViewById(R.id.btnMainDish);
         btnDrinks = view.findViewById(R.id.btnDrinks);
         btnSnacks = view.findViewById(R.id.btnSnacks);
@@ -73,7 +73,15 @@ public class ClientHomeFragment extends Fragment {
         ivLogo.setClickable(false);
         ivLogo.setFocusable(false);
 
-        // Welcome message
+        setupWelcomeMessage();
+        setupRecyclerView();
+        setupCategoryButtons();
+        setupSearchBar();
+
+        return view;
+    }
+
+    private void setupWelcomeMessage() {
         FirebaseUser user = auth.getCurrentUser();
         String userName = "Customer";
         if (user != null) {
@@ -84,154 +92,199 @@ public class ClientHomeFragment extends Fragment {
             }
         }
         tvWelcome.setText("Welcome, " + userName + "!");
+    }
 
-        // RecyclerView setup
+    private void setupRecyclerView() {
         recyclerMain.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        // Initialize with empty list
+        filteredFoodList = new ArrayList<>();
         foodAdapter = new FoodAdapter(filteredFoodList);
         recyclerMain.setAdapter(foodAdapter);
 
         loadFoodItemsFromFirebase();
 
-        // Shopee-style scroll effect - FIXED VERSION
         recyclerMain.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
-
-                // SIMPLIFIED VERSION - AppBar effect only
                 float appBarHeight = appBarLayout.getHeight();
                 float newAppBarY = appBarLayout.getTranslationY() - dy;
                 newAppBarY = Math.max(-appBarHeight, Math.min(0, newAppBarY));
                 appBarLayout.setTranslationY(newAppBarY);
-
-                // REMOVED ALL menuOrdersLayout REFERENCES
             }
         });
+    }
 
-        // Search functionality
-        searchEditText.addTextChangedListener(new android.text.TextWatcher() {
+    private void setupCategoryButtons() {
+        btnMainDish.setOnClickListener(v -> filterByCategory("main dish"));
+        btnDrinks.setOnClickListener(v -> filterByCategory("drinks"));
+        btnSnacks.setOnClickListener(v -> filterByCategory("snacks"));
+        btnDesserts.setOnClickListener(v -> filterByCategory("dessert"));
+
+        resetCategoryButtons();
+        highlightCategoryButton("all");
+    }
+
+    private void setupSearchBar() {
+        searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 filterFood(s.toString());
             }
+
             @Override
-            public void afterTextChanged(android.text.Editable s) {}
+            public void afterTextChanged(Editable s) {}
         });
-
-        // NEW: Category button click listeners
-        setupCategoryButtons();
-
-        return view;
     }
 
-    // NEW: Setup category button listeners
-    private void setupCategoryButtons() {
-        // Main Dish button
-        btnMainDish.setOnClickListener(v -> filterByCategory("Main Dish"));
-
-        // Drinks button
-        btnDrinks.setOnClickListener(v -> filterByCategory("Drinks"));
-
-        // Snacks button
-        btnSnacks.setOnClickListener(v -> filterByCategory("Snacks"));
-
-        // Desserts button
-        btnDesserts.setOnClickListener(v -> filterByCategory("Desserts"));
-    }
-
-    // NEW: Filter by category
     private void filterByCategory(String category) {
-        currentCategory = category;
+        // Convert to lowercase for consistent comparison
+        currentCategory = category.toLowerCase();
 
-        // Reset all button appearances
+        // Special handling for dessert
+        if (currentCategory.contains("dessert")) {
+            currentCategory = "dessert";
+        }
+
         resetCategoryButtons();
+        highlightCategoryButton(currentCategory);
 
-        // Highlight selected button
-        highlightCategoryButton(category);
-
-        // Apply category filter
-        String searchQuery = searchEditText.getText().toString();
-        applyFilters(searchQuery, category);
+        String query = searchEditText.getText().toString();
+        applyFilters(query, currentCategory);
     }
 
-    // NEW: Reset all category buttons to default appearance
     private void resetCategoryButtons() {
-        // Reset all buttons (you can customize the appearance)
         btnMainDish.setAlpha(0.8f);
         btnDrinks.setAlpha(0.8f);
         btnSnacks.setAlpha(0.8f);
         btnDesserts.setAlpha(0.8f);
+
+        btnMainDish.setScaleX(1f);
+        btnMainDish.setScaleY(1f);
+        btnDrinks.setScaleX(1f);
+        btnDrinks.setScaleY(1f);
+        btnSnacks.setScaleX(1f);
+        btnSnacks.setScaleY(1f);
+        btnDesserts.setScaleX(1f);
+        btnDesserts.setScaleY(1f);
     }
 
-    // NEW: Highlight selected category button
     private void highlightCategoryButton(String category) {
         switch (category) {
-            case "Main Dish":
-                btnMainDish.setAlpha(1.0f);
+            case "main dish":
+                btnMainDish.setAlpha(1f);
+                btnMainDish.setScaleX(1.08f);
+                btnMainDish.setScaleY(1.08f);
                 break;
-            case "Drinks":
-                btnDrinks.setAlpha(1.0f);
+            case "drinks":
+                btnDrinks.setAlpha(1f);
+                btnDrinks.setScaleX(1.08f);
+                btnDrinks.setScaleY(1.08f);
                 break;
-            case "Snacks":
-                btnSnacks.setAlpha(1.0f);
+            case "snacks":
+                btnSnacks.setAlpha(1f);
+                btnSnacks.setScaleX(1.08f);
+                btnSnacks.setScaleY(1.08f);
                 break;
-            case "Desserts":
-                btnDesserts.setAlpha(1.0f);
+            case "dessert":
+                btnDesserts.setAlpha(1f);
+                btnDesserts.setScaleX(1.08f);
+                btnDesserts.setScaleY(1.08f);
+                break;
+            default:
+                // For "all" or unknown categories, don't highlight any
                 break;
         }
     }
 
-    // NEW: Apply both search and category filters
-    private void applyFilters(String searchQuery, String category) {
-        filteredFoodList.clear();
-
-        for (FoodItem food : foodList) {
-            boolean matchesSearch = searchQuery.isEmpty() ||
-                    (food.name != null && food.name.toLowerCase().contains(searchQuery.toLowerCase()));
-
-            boolean matchesCategory = category.equals("All") ||
-                    (food.category != null && food.category.equals(category));
-
-            if (matchesSearch && matchesCategory) {
-                filteredFoodList.add(food);
-            }
-        }
-
-        foodAdapter.updateList(filteredFoodList);
-
-        // Show message if no items found
-        if (filteredFoodList.isEmpty()) {
-            Toast.makeText(requireContext(),
-                    "No items found for '" + searchQuery + "' in " + category,
-                    Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    // Filter foods by search (updated to include category)
     private void filterFood(String query) {
         applyFilters(query, currentCategory);
     }
 
-    // Load food items from Firebase
-    private void loadFoodItemsFromFirebase() {
-        DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
-        foodRef.get().addOnSuccessListener(snapshot -> {
-            foodList.clear();
-            for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                FoodItem food = itemSnapshot.getValue(FoodItem.class);
-                if (food != null) foodList.add(food);
+    private void applyFilters(String searchQuery, String category) {
+        List<FoodItem> tempFilteredList = new ArrayList<>();
+
+        String query = (searchQuery == null ? "" : searchQuery.toLowerCase().trim());
+        String cat = (category == null ? "all" : category.toLowerCase().trim());
+
+        Log.d("SearchFilter", "Applying filter - Query: '" + query + "', Category: '" + cat + "'");
+        Log.d("SearchFilter", "Total food items to filter: " + foodList.size());
+
+        for (FoodItem food : foodList) {
+            if (food == null || food.name == null) {
+                continue;
             }
-            filteredFoodList.clear();
-            filteredFoodList.addAll(foodList);
-            foodAdapter.notifyDataSetChanged();
-        }).addOnFailureListener(e ->
-                Toast.makeText(requireContext(), "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-        );
+
+            String foodName = food.name.toLowerCase().trim();
+            String foodCategory = (food.category == null ? "" : food.category.toLowerCase().trim());
+
+            boolean matchesSearch = query.isEmpty() || foodName.contains(query);
+            boolean matchesCategory = cat.equals("all") || foodCategory.equals(cat);
+
+            if (matchesSearch && matchesCategory) {
+                tempFilteredList.add(food);
+            }
+        }
+
+        // Update the adapter's list
+        filteredFoodList.clear();
+        filteredFoodList.addAll(tempFilteredList);
+        foodAdapter.updateList(filteredFoodList);
+
+        Log.d("SearchFilter", "Filter result count: " + filteredFoodList.size());
+
+        // Show message if no results
+        if (filteredFoodList.isEmpty() && (!query.isEmpty() || !cat.equals("all"))) {
+            Toast.makeText(getContext(), "No items found", Toast.LENGTH_SHORT).show();
+        }
     }
 
-    // Convert Base64 to Bitmap
+    private void loadFoodItemsFromFirebase() {
+        DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
+        foodRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                foodList.clear();
+
+                Log.d("FirebaseLoad", "Total items in snapshot: " + snapshot.getChildrenCount());
+
+                for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
+                    FoodItem food = itemSnapshot.getValue(FoodItem.class);
+                    if (food != null) {
+                        // Debug logging for each food item
+                        Log.d("FoodLoaded", "Name: " + food.name +
+                                ", Category: " + food.category +
+                                ", Price: " + food.price);
+
+                        foodList.add(food);
+                    }
+                }
+
+                // Initially show ALL items
+                filteredFoodList.clear();
+                filteredFoodList.addAll(foodList);
+                foodAdapter.updateList(filteredFoodList);
+
+                Log.d("FoodList", "Food list size: " + foodList.size());
+                Log.d("FilteredList", "Filtered list size: " + filteredFoodList.size());
+
+                if (foodList.isEmpty()) {
+                    Toast.makeText(getContext(), "No food items available", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("FirebaseError", "Failed to load: " + error.getMessage());
+                Toast.makeText(requireContext(), "Failed to load menu items", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     public static Bitmap base64ToBitmap(String base64Str) {
         try {
             byte[] decodedBytes = Base64.decode(base64Str, Base64.DEFAULT);
@@ -242,9 +295,8 @@ public class ClientHomeFragment extends Fragment {
         }
     }
 
-    // RecyclerView Adapter (no changes needed)
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
-        private final List<FoodItem> foods;
+        private List<FoodItem> foods;
 
         public FoodAdapter(List<FoodItem> foods) {
             this.foods = foods;
@@ -260,35 +312,47 @@ public class ClientHomeFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
+            if (foods == null || foods.isEmpty() || position >= foods.size()) {
+                return;
+            }
+
             FoodItem food = foods.get(position);
-            holder.tvName.setText(food.name);
+            if (food == null) return;
+
+            holder.tvName.setText(food.name != null ? food.name : "No Name");
             holder.tvPrice.setText("₱" + String.format("%.2f", food.price));
-            holder.tvDesc.setText(food.description);
-            holder.tvCategory.setText(food.category);
-            holder.tvPrepTime.setText(food.prepTime + " mins");
+            holder.tvDesc.setText(food.description != null ? food.description : "No description");
+            holder.tvCategory.setText(food.category != null ? food.category : "Uncategorized");
+            holder.tvPrepTime.setText((food.prepTime != null ? food.prepTime : "0") + " mins");
 
             if (food.base64Image != null && !food.base64Image.isEmpty()) {
                 Bitmap bitmap = base64ToBitmap(food.base64Image);
-                if (bitmap != null) holder.ivFoodImage.setImageBitmap(bitmap);
-                else holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                if (bitmap != null) {
+                    holder.ivFoodImage.setImageBitmap(bitmap);
+                } else {
+                    holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                }
             } else {
                 holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
             }
 
-            holder.itemView.setAlpha(food.available ? 1.0f : 0.5f);
+            holder.itemView.setAlpha(food.available ? 1f : 0.5f);
             holder.btnAddCart.setEnabled(food.available);
-
-            holder.btnAddCart.setOnClickListener(v -> addToCart(food));
+            if (food.available) {
+                holder.btnAddCart.setOnClickListener(v -> addToCart(food));
+            } else {
+                holder.btnAddCart.setOnClickListener(null);
+                holder.btnAddCart.setText("Unavailable");
+            }
         }
 
         @Override
         public int getItemCount() {
-            return foods.size();
+            return foods != null ? foods.size() : 0;
         }
 
         public void updateList(List<FoodItem> newList) {
-            foods.clear();
-            foods.addAll(newList);
+            this.foods = newList;
             notifyDataSetChanged();
         }
 
@@ -304,7 +368,7 @@ public class ClientHomeFragment extends Fragment {
                     .child(currentUser.getUid());
 
             cartRef.orderByChild("name").equalTo(food.name)
-                    .addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
                             if (snapshot.exists()) {
@@ -317,7 +381,7 @@ public class ClientHomeFragment extends Fragment {
                                 }
                                 Toast.makeText(requireContext(), food.name + " quantity updated in cart!", Toast.LENGTH_SHORT).show();
                             } else {
-                                CartFoodItem newItem = new CartFoodItem(food.name, food.price, 1);
+                                CartFoodItem newItem = new CartFoodItem(food.name, food.price, 1, food.base64Image);
                                 cartRef.push().setValue(newItem)
                                         .addOnSuccessListener(aVoid ->
                                                 Toast.makeText(requireContext(), food.name + " added to cart!", Toast.LENGTH_SHORT).show())
@@ -327,7 +391,7 @@ public class ClientHomeFragment extends Fragment {
                         }
 
                         @Override
-                        public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
+                        public void onCancelled(@NonNull DatabaseError error) {
                             Toast.makeText(requireContext(), "Failed to access cart: " + error.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -351,7 +415,6 @@ public class ClientHomeFragment extends Fragment {
         }
     }
 
-    // Data models (no changes needed)
     public static class FoodItem {
         public String name;
         public String description;
@@ -368,12 +431,15 @@ public class ClientHomeFragment extends Fragment {
         public String name;
         public double price;
         public int quantity;
+        public String base64Image;
 
         public CartFoodItem() {}
-        public CartFoodItem(String name, double price, int quantity) {
+
+        public CartFoodItem(String name, double price, int quantity, String base64Image) {
             this.name = name;
             this.price = price;
             this.quantity = quantity;
+            this.base64Image = base64Image;
         }
     }
 }

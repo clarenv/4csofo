@@ -2,15 +2,18 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F8FA">
+    android:background="#F7F8FA"
+    android:fitsSystemWindows="true">
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="20dp"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:paddingVertical="24dp"
+        android:paddingHorizontal="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -18,93 +21,206 @@
             android:orientation="vertical"
             android:gravity="center_horizontal">
 
-            <TextView
-                android:id="@+id/tvTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="My Profile"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:padding="10dp"
-                android:textColor="#333" />
-
-            <!-- NAME -->
-            <EditText
-                android:id="@+id/edtName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Full Name"
-                android:enabled="false"
-                android:padding="10dp"
-                android:layout_marginTop="10dp" />
-
-            <!-- EMAIL -->
-            <EditText
-                android:id="@+id/edtEmail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Email Address"
-                android:enabled="false"
-                android:padding="10dp"
-                android:layout_marginTop="10dp" />
-
-            <!-- PHONE -->
-            <EditText
-                android:id="@+id/edtPhone"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Phone Number"
-                android:enabled="false"
-                android:inputType="phone"
-                android:maxLength="11"
-                android:padding="10dp"
-                android:layout_marginTop="10dp" />
-
-            <!-- ADDRESS -->
-            <EditText
-                android:id="@+id/edtAddress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Home Address"
-                android:enabled="false"
-                android:padding="10dp"
-                android:layout_marginTop="10dp" />
-
-            <!-- BUTTONS -->
+            <!-- Profile Header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:gravity="center"
-                android:layout_marginTop="20dp">
+                android:layout_marginBottom="24dp">
 
-                <Button
-                    android:id="@+id/btnEdit"
+                <TextView
+                    android:id="@+id/tvTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Edit"
-                    android:layout_marginEnd="10dp" />
-
-                <Button
-                    android:id="@+id/btnSave"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Save"
-                    android:enabled="false" />
+                    android:text="My Profile"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A1A1A"
+                    android:letterSpacing="0.02" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/btnLogout"
+            <!-- Form Container -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Logout"
-                android:backgroundTint="#F44336"
-                android:textColor="#FFFFFF"
-                android:layout_marginTop="16dp" />
+                android:orientation="vertical"
+                android:background="@android:color/white"
+                android:paddingVertical="24dp"
+                android:paddingHorizontal="20dp"
+                android:elevation="2dp"
+                android:outlineProvider="bounds">
 
+                <!-- NAME -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Full Name"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="4dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="16dp"
+                    app:boxStrokeColor="#DDDDDD"
+                    app:hintEnabled="false">
+
+                    <EditText
+                        android:id="@+id/edtName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter your full name"
+                        android:enabled="false"
+                        android:padding="16dp"
+                        android:textSize="16sp"
+                        android:textColor="#333333"
+                        android:background="@android:color/transparent" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- EMAIL -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Email Address"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="4dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="16dp"
+                    app:boxStrokeColor="#DDDDDD"
+                    app:hintEnabled="false">
+
+                    <EditText
+                        android:id="@+id/edtEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter your email"
+                        android:enabled="false"
+                        android:inputType="textEmailAddress"
+                        android:padding="16dp"
+                        android:textSize="16sp"
+                        android:textColor="#333333"
+                        android:background="@android:color/transparent" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- PHONE -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Phone Number"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="4dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="16dp"
+                    app:boxStrokeColor="#DDDDDD"
+                    app:hintEnabled="false">
+
+                    <EditText
+                        android:id="@+id/edtPhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter your phone number"
+                        android:enabled="false"
+                        android:inputType="phone"
+                        android:maxLength="11"
+                        android:padding="16dp"
+                        android:textSize="16sp"
+                        android:textColor="#333333"
+                        android:background="@android:color/transparent" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- ADDRESS -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Home Address"
+                    android:textSize="14sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="4dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="24dp"
+                    app:boxStrokeColor="#DDDDDD"
+                    app:hintEnabled="false">
+
+                    <EditText
+                        android:id="@+id/edtAddress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter your home address"
+                        android:enabled="false"
+                        android:padding="16dp"
+                        android:textSize="16sp"
+                        android:textColor="#333333"
+                        android:background="@android:color/transparent" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- BUTTONS -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_horizontal"
+                    android:layout_marginBottom="32dp">
+
+                    <Button
+                        android:id="@+id/btnEdit"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="Edit"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textColor="#FFFFFF"
+                        android:backgroundTint="#2196F3" />
+
+                    <Button
+                        android:id="@+id/btnSave"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Save"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textColor="#FFFFFF"
+                        android:enabled="false"
+                        android:backgroundTint="#4CAF50" />
+                </LinearLayout>
+
+                <!-- LOGOUT BUTTON WITH ICON -->
+                <Button
+                    android:id="@+id/btnLogout"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="Logout"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#F44336"
+                    android:drawableStart="@android:drawable/ic_lock_power_off"
+                    android:drawableTint="#FFFFFF"
+                    android:drawablePadding="12dp"
+                    android:gravity="center"
+                    android:paddingStart="16dp" />
+
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
-
-    <!-- BottomNavigationView removed -->
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
