@@ -187,10 +187,10 @@
 
                             <ImageView
                                 android:layout_width="24dp"
-                                android:layout_height="24dp"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
                                 android:src="@drawable/ic_main_dish"
-                                android:tint="@color/primary"
-                                android:layout_gravity="center" />
+                                android:tint="@color/primary" />
 
                         </com.google.android.material.card.MaterialCardView>
 
