@@ -67,6 +67,8 @@
         <activity android:name=".AdminCategoriesFragment" android:exported="false" />
         <activity android:name=".AdminMenuItemsFragment" android:exported="false" />
         <activity android:name=".ClientProfileFragment" android:exported="false" />
+        <activity android:name=".AdminFamousFragment" android:exported="false" />
+
 
     </application>
 

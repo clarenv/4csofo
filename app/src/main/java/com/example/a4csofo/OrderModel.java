@@ -2,7 +2,6 @@ package com.example.a4csofo;
 
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-
 import java.util.List;
 
 public class OrderModel {
@@ -31,11 +30,17 @@ public class OrderModel {
     private double deliveryLat;
     private double deliveryLng;
 
-    // Required empty constructor for Firebase
-    public OrderModel() {}
+    // ORDER DATE
+    private long orderDate; // timestamp in millis
 
+    // ✅ Proper no-argument constructor for Firebase
+    public OrderModel() {
+        // Firebase requires this empty constructor
+    }
+
+    // Optional parameterized constructor for manual creation
     public OrderModel(String userId, String customer_name, List<String> items, double total_price,
-                      String payment_method, String status, String deliveryLocation) {
+                      String payment_method, String status, String deliveryLocation, long orderDate) {
         this.userId = userId;
         this.customer_name = customer_name;
         this.items = items;
@@ -53,6 +58,8 @@ public class OrderModel {
         this.gcashProof = "";
 
         this.deliveryLocation = deliveryLocation;
+        this.orderDate = orderDate;
+
         parseLatLng(deliveryLocation);
     }
 
@@ -89,6 +96,7 @@ public class OrderModel {
     public String getOrderType() { return orderType != null ? orderType : "delivery"; }
     public String getPickupTime() { return pickupTime != null ? pickupTime : ""; }
     public String getPickupBranch() { return pickupBranch != null ? pickupBranch : ""; }
+    public long getOrderDate() { return orderDate; }
 
     public String getTotal() { return "₱" + String.format("%.2f", total_price); }
     public String getPaymentText() { return "Payment: " + getPayment_method(); }
@@ -115,6 +123,7 @@ public class OrderModel {
     public void setPickupBranch(String pickupBranch) { this.pickupBranch = pickupBranch; }
     public void setGcashReferenceNumber(String gcashReferenceNumber) { this.gcashReferenceNumber = gcashReferenceNumber; }
     public void setGcashProofDownloadUrl(String gcashProofDownloadUrl) { this.gcashProofDownloadUrl = gcashProofDownloadUrl; }
+    public void setOrderDate(long orderDate) { this.orderDate = orderDate; }
 
     // ----------------- UPDATE STATUS -----------------
     public void updateStatus(String newStatus) {
@@ -135,12 +144,7 @@ public class OrderModel {
     public boolean isPickup() { return "pickup".equalsIgnoreCase(getOrderType()); }
     public boolean isDelivery() { return "delivery".equalsIgnoreCase(getOrderType()); }
 
-    public String getPaymentMethod() {
-        return getPayment_method();
-    }
+    public String getPaymentMethod() { return getPayment_method(); }
 
-    public String getFormattedTotal() {
-        return "₱" + String.format("%.2f", total_price);
-    }
-
+    public String getFormattedTotal() { return "₱" + String.format("%.2f", total_price); }
 }

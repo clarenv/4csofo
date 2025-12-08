@@ -215,8 +215,10 @@ public class CheckoutActivity extends AppCompatActivity {
         for (CartItem item : cartList) {
             itemsList.add(item.getName() + " x" + item.getQuantity());
         }
+        // Add order date (current timestamp)
+        long orderDate = System.currentTimeMillis();
 
-        // Use YOUR OrderModel (external) — constructor matches your OrderModel.java
+// Create the OrderModel with 8 parameters
         OrderModel order = new OrderModel(
                 currentUser.getUid(),
                 "Customer Name",
@@ -224,7 +226,8 @@ public class CheckoutActivity extends AppCompatActivity {
                 total,
                 paymentMethod,
                 "Pending",
-                deliveryLocation
+                deliveryLocation,
+                orderDate // <-- add this
         );
 
         // Set extras: pickup/delivery type and pickup info if applicable

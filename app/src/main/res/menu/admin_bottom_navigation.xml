@@ -8,6 +8,10 @@
         android:icon="@drawable/ic_admin_orders"
         android:title="Orders"/>
     <item
+        android:id="@+id/nav_famous"
+        android:icon="@drawable/ic_star"
+        android:title="Famous" />
+    <item
         android:id="@+id/nav_categories"
         android:icon="@drawable/ic_admin_categories"
         android:title="Categories"/>
