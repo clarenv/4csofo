@@ -121,7 +121,7 @@
 
                 </androidx.cardview.widget.CardView>
 
-                <!-- CATEGORY BUTTONS (NEW SECTION) -->
+                <!-- CATEGORY BUTTONS -->
                 <LinearLayout
                     android:id="@+id/categoryButtonsLayout"
                     android:layout_width="match_parent"
@@ -129,6 +129,43 @@
                     android:orientation="horizontal"
                     android:gravity="center"
                     android:layout_marginTop="4dp">
+
+                    <!-- All -->
+                    <LinearLayout
+                        android:id="@+id/btnAll"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:padding="6dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="26dp"
+                            app:cardBackgroundColor="@color/white"
+                            app:cardElevation="1.5dp"
+                            android:layout_marginBottom="2dp">
+
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_all"
+                                android:tint="@color/primary"
+                                android:layout_gravity="center" />
+
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="All"
+                            android:textSize="11sp"
+                            android:textColor="@color/text_white"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
 
                     <!-- Main Dishes -->
                     <LinearLayout

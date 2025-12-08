@@ -25,8 +25,10 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,6 +96,9 @@ public class ClientHomeFragment extends Fragment {
 
     private void setupRecyclerView() {
         recyclerMain.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        // Initialize with empty list
+        filteredFoodList = new ArrayList<>();
         foodAdapter = new FoodAdapter(filteredFoodList);
         recyclerMain.setAdapter(foodAdapter);
 
@@ -112,10 +117,10 @@ public class ClientHomeFragment extends Fragment {
     }
 
     private void setupCategoryButtons() {
-        btnMainDish.setOnClickListener(v -> filterByCategory("Main Dish"));
-        btnDrinks.setOnClickListener(v -> filterByCategory("Drinks"));
-        btnSnacks.setOnClickListener(v -> filterByCategory("Snacks"));
-        btnDesserts.setOnClickListener(v -> filterByCategory("Dessert"));
+        btnMainDish.setOnClickListener(v -> filterByCategory("main dish"));
+        btnDrinks.setOnClickListener(v -> filterByCategory("drinks"));
+        btnSnacks.setOnClickListener(v -> filterByCategory("snacks"));
+        btnDesserts.setOnClickListener(v -> filterByCategory("dessert"));
 
         resetCategoryButtons();
         highlightCategoryButton("all");
@@ -123,49 +128,76 @@ public class ClientHomeFragment extends Fragment {
 
     private void setupSearchBar() {
         searchEditText.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 filterFood(s.toString());
             }
-            @Override public void afterTextChanged(Editable s) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {}
         });
     }
 
     private void filterByCategory(String category) {
-        currentCategory = category.toLowerCase().trim();
+        // Convert to lowercase for consistent comparison
+        currentCategory = category.toLowerCase();
+
+        // Special handling for dessert
+        if (currentCategory.contains("dessert")) {
+            currentCategory = "dessert";
+        }
+
         resetCategoryButtons();
         highlightCategoryButton(currentCategory);
+
         String query = searchEditText.getText().toString();
         applyFilters(query, currentCategory);
     }
 
     private void resetCategoryButtons() {
-        btnMainDish.setAlpha(0.8f); btnDrinks.setAlpha(0.8f);
-        btnSnacks.setAlpha(0.8f); btnDesserts.setAlpha(0.8f);
+        btnMainDish.setAlpha(0.8f);
+        btnDrinks.setAlpha(0.8f);
+        btnSnacks.setAlpha(0.8f);
+        btnDesserts.setAlpha(0.8f);
 
-        btnMainDish.setScaleX(1f); btnMainDish.setScaleY(1f);
-        btnDrinks.setScaleX(1f); btnDrinks.setScaleY(1f);
-        btnSnacks.setScaleX(1f); btnSnacks.setScaleY(1f);
-        btnDesserts.setScaleX(1f); btnDesserts.setScaleY(1f);
+        btnMainDish.setScaleX(1f);
+        btnMainDish.setScaleY(1f);
+        btnDrinks.setScaleX(1f);
+        btnDrinks.setScaleY(1f);
+        btnSnacks.setScaleX(1f);
+        btnSnacks.setScaleY(1f);
+        btnDesserts.setScaleX(1f);
+        btnDesserts.setScaleY(1f);
     }
 
     private void highlightCategoryButton(String category) {
         switch (category) {
             case "main dish":
-                btnMainDish.setAlpha(1f); btnMainDish.setScaleX(1.08f); btnMainDish.setScaleY(1.08f);
+                btnMainDish.setAlpha(1f);
+                btnMainDish.setScaleX(1.08f);
+                btnMainDish.setScaleY(1.08f);
                 break;
             case "drinks":
-                btnDrinks.setAlpha(1f); btnDrinks.setScaleX(1.08f); btnDrinks.setScaleY(1.08f);
+                btnDrinks.setAlpha(1f);
+                btnDrinks.setScaleX(1.08f);
+                btnDrinks.setScaleY(1.08f);
                 break;
             case "snacks":
-                btnSnacks.setAlpha(1f); btnSnacks.setScaleX(1.08f); btnSnacks.setScaleY(1.08f);
+                btnSnacks.setAlpha(1f);
+                btnSnacks.setScaleX(1.08f);
+                btnSnacks.setScaleY(1.08f);
                 break;
             case "dessert":
-            case "desserts":
-                btnDesserts.setAlpha(1f); btnDesserts.setScaleX(1.08f); btnDesserts.setScaleY(1.08f);
+                btnDesserts.setAlpha(1f);
+                btnDesserts.setScaleX(1.08f);
+                btnDesserts.setScaleY(1.08f);
                 break;
-            default: break;
+            default:
+                // For "all" or unknown categories, don't highlight any
+                break;
         }
     }
 
@@ -174,45 +206,83 @@ public class ClientHomeFragment extends Fragment {
     }
 
     private void applyFilters(String searchQuery, String category) {
-        filteredFoodList.clear();
+        List<FoodItem> tempFilteredList = new ArrayList<>();
 
         String query = (searchQuery == null ? "" : searchQuery.toLowerCase().trim());
         String cat = (category == null ? "all" : category.toLowerCase().trim());
 
-        for (FoodItem food : foodList) {
-            if (food == null) continue;
+        Log.d("SearchFilter", "Applying filter - Query: '" + query + "', Category: '" + cat + "'");
+        Log.d("SearchFilter", "Total food items to filter: " + foodList.size());
 
-            String foodName = (food.name == null ? "" : food.name.toLowerCase().trim());
+        for (FoodItem food : foodList) {
+            if (food == null || food.name == null) {
+                continue;
+            }
+
+            String foodName = food.name.toLowerCase().trim();
             String foodCategory = (food.category == null ? "" : food.category.toLowerCase().trim());
 
             boolean matchesSearch = query.isEmpty() || foodName.contains(query);
             boolean matchesCategory = cat.equals("all") || foodCategory.equals(cat);
 
-            if (matchesSearch && matchesCategory) filteredFoodList.add(food);
+            if (matchesSearch && matchesCategory) {
+                tempFilteredList.add(food);
+            }
         }
 
+        // Update the adapter's list
+        filteredFoodList.clear();
+        filteredFoodList.addAll(tempFilteredList);
         foodAdapter.updateList(filteredFoodList);
 
-        Log.d("SearchDebug", "Query: '" + query + "' | Category: '" + cat + "' | Matches: " + filteredFoodList.size());
+        Log.d("SearchFilter", "Filter result count: " + filteredFoodList.size());
+
+        // Show message if no results
+        if (filteredFoodList.isEmpty() && (!query.isEmpty() || !cat.equals("all"))) {
+            Toast.makeText(getContext(), "No items found", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void loadFoodItemsFromFirebase() {
         DatabaseReference foodRef = FirebaseDatabase.getInstance().getReference("foods");
-        foodRef.get().addOnSuccessListener(snapshot -> {
-            foodList.clear();
-            for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
-                FoodItem food = itemSnapshot.getValue(FoodItem.class);
-                if (food != null) {
-                    foodList.add(food);
-                    Log.d("FoodLoaded", "Name: " + food.name + ", Category: " + food.category);
+        foodRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                foodList.clear();
+
+                Log.d("FirebaseLoad", "Total items in snapshot: " + snapshot.getChildrenCount());
+
+                for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
+                    FoodItem food = itemSnapshot.getValue(FoodItem.class);
+                    if (food != null) {
+                        // Debug logging for each food item
+                        Log.d("FoodLoaded", "Name: " + food.name +
+                                ", Category: " + food.category +
+                                ", Price: " + food.price);
+
+                        foodList.add(food);
+                    }
+                }
+
+                // Initially show ALL items
+                filteredFoodList.clear();
+                filteredFoodList.addAll(foodList);
+                foodAdapter.updateList(filteredFoodList);
+
+                Log.d("FoodList", "Food list size: " + foodList.size());
+                Log.d("FilteredList", "Filtered list size: " + filteredFoodList.size());
+
+                if (foodList.isEmpty()) {
+                    Toast.makeText(getContext(), "No food items available", Toast.LENGTH_SHORT).show();
                 }
             }
-            filteredFoodList.clear();
-            filteredFoodList.addAll(foodList);
-            foodAdapter.notifyDataSetChanged();
-        }).addOnFailureListener(e ->
-                Toast.makeText(requireContext(), "Failed to load menu items: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-        );
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("FirebaseError", "Failed to load: " + error.getMessage());
+                Toast.makeText(requireContext(), "Failed to load menu items", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     public static Bitmap base64ToBitmap(String base64Str) {
@@ -226,9 +296,11 @@ public class ClientHomeFragment extends Fragment {
     }
 
     public class FoodAdapter extends RecyclerView.Adapter<FoodAdapter.FoodViewHolder> {
-        private final List<FoodItem> foods;
+        private List<FoodItem> foods;
 
-        public FoodAdapter(List<FoodItem> foods) { this.foods = foods; }
+        public FoodAdapter(List<FoodItem> foods) {
+            this.foods = foods;
+        }
 
         @NonNull
         @Override
@@ -240,30 +312,47 @@ public class ClientHomeFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull FoodViewHolder holder, int position) {
+            if (foods == null || foods.isEmpty() || position >= foods.size()) {
+                return;
+            }
+
             FoodItem food = foods.get(position);
-            holder.tvName.setText(food.name);
+            if (food == null) return;
+
+            holder.tvName.setText(food.name != null ? food.name : "No Name");
             holder.tvPrice.setText("₱" + String.format("%.2f", food.price));
-            holder.tvDesc.setText(food.description);
-            holder.tvCategory.setText(food.category);
-            holder.tvPrepTime.setText(food.prepTime + " mins");
+            holder.tvDesc.setText(food.description != null ? food.description : "No description");
+            holder.tvCategory.setText(food.category != null ? food.category : "Uncategorized");
+            holder.tvPrepTime.setText((food.prepTime != null ? food.prepTime : "0") + " mins");
 
             if (food.base64Image != null && !food.base64Image.isEmpty()) {
                 Bitmap bitmap = base64ToBitmap(food.base64Image);
-                if (bitmap != null) holder.ivFoodImage.setImageBitmap(bitmap);
-                else holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
-            } else holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                if (bitmap != null) {
+                    holder.ivFoodImage.setImageBitmap(bitmap);
+                } else {
+                    holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+                }
+            } else {
+                holder.ivFoodImage.setImageResource(R.drawable.ic_placeholder);
+            }
 
             holder.itemView.setAlpha(food.available ? 1f : 0.5f);
             holder.btnAddCart.setEnabled(food.available);
-            holder.btnAddCart.setOnClickListener(v -> addToCart(food));
+            if (food.available) {
+                holder.btnAddCart.setOnClickListener(v -> addToCart(food));
+            } else {
+                holder.btnAddCart.setOnClickListener(null);
+                holder.btnAddCart.setText("Unavailable");
+            }
         }
 
         @Override
-        public int getItemCount() { return foods.size(); }
+        public int getItemCount() {
+            return foods != null ? foods.size() : 0;
+        }
 
         public void updateList(List<FoodItem> newList) {
-            foods.clear();
-            foods.addAll(newList);
+            this.foods = newList;
             notifyDataSetChanged();
         }
 
@@ -279,7 +368,7 @@ public class ClientHomeFragment extends Fragment {
                     .child(currentUser.getUid());
 
             cartRef.orderByChild("name").equalTo(food.name)
-                    .addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
                             if (snapshot.exists()) {
@@ -302,7 +391,7 @@ public class ClientHomeFragment extends Fragment {
                         }
 
                         @Override
-                        public void onCancelled(@NonNull com.google.firebase.database.DatabaseError error) {
+                        public void onCancelled(@NonNull DatabaseError error) {
                             Toast.makeText(requireContext(), "Failed to access cart: " + error.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
