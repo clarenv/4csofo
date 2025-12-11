@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -8,19 +7,7 @@
         android:orientation="vertical"
         android:padding="20dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/background_screen">
-
-        <!-- Title -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="GCash Payment"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary_color"
-            android:gravity="center"
-            android:layout_marginBottom="20dp"/>
+        android:layout_height="wrap_content">
 
         <!-- QR CODE -->
         <ImageView
@@ -29,154 +16,89 @@
             android:layout_height="200dp"
             android:layout_gravity="center"
             android:src="@drawable/gcash_qr"
-            android:contentDescription="GCash QR Code"
-            android:layout_marginBottom="20dp"
-            android:background="@color/background_card"
-            app:cardCornerRadius="12dp"/>
-
-        <!-- Instructions -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="1. Scan the QR code above\n2. Take a screenshot of your payment\n3. Fill in the details below"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:lineSpacingExtra="4dp"
+            android:contentDescription="QR Code"
             android:layout_marginBottom="20dp"/>
 
-        <!-- DELIVERY ADDRESS -->
+        <!-- DELIVERY LOCATION OPTIONS -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Delivery Address"
-            android:textSize="16sp"
+            android:text="Select Delivery Location"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
             android:layout_marginBottom="10dp"/>
 
-        <!-- Street Input -->
-        <TextView
-            android:layout_width="wrap_content"
+        <RadioGroup
+            android:id="@+id/rgLocation"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Street / Purok / Sitio"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="5dp"/>
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbCurrentLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Use Current Location"/>
+
+            <RadioButton
+                android:id="@+id/rbSavedAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saved Address"
+                android:enabled="false"/>
+
+            <RadioButton
+                android:id="@+id/rbManualInput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enter Address Manually"/>
+        </RadioGroup>
 
         <EditText
-            android:id="@+id/edtStreet"
+            android:id="@+id/edtManualAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="e.g., Purok 5, Sitio Maligaya"
-            android:padding="12dp"
-            android:textColor="@color/text_primary"
-            android:layout_marginBottom="15dp"/>
+            android:hint="Enter address"
+            android:enabled="false"
+            android:padding="10dp"
+            android:layout_marginBottom="20dp"/>
 
-        <!-- Barangay Selection -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Barangay"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="5dp"/>
-
-        <Spinner
-            android:id="@+id/spinnerBarangay"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="12dp"
-            android:layout_marginBottom="15dp"/>
-
-        <!-- Address Preview -->
-        <TextView
-            android:id="@+id/txtAddressPreview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="14sp"
-            android:textColor="@color/primary_color"
-            android:textStyle="bold"
-            android:padding="12dp"
-            android:background="@color/background_light"
-            android:layout_marginBottom="20dp"
-            android:visibility="gone"
-            app:cardCornerRadius="8dp"/>
-
-        <!-- GCash Proof Upload -->
+        <!-- GCash Proof & Reference Number -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Upload GCash Screenshot"
-            android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:paddingTop="10dp"
             android:layout_marginBottom="10dp"/>
 
         <Button
-            android:id="@+id/btnUploadProof"
+            android:id="@+id/btnChooseImage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📸 Choose Image"
-            android:textSize="16sp"
-            android:backgroundTint="@color/primary_color"
-            android:textColor="@color/text_white"
-            app:cornerRadius="8dp"
+            android:text="Choose Image"
             android:layout_marginBottom="10dp"/>
 
         <ImageView
-            android:id="@+id/imgProofPreview"
+            android:id="@+id/imgPreview"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="200dp"
             android:scaleType="centerCrop"
-            android:background="@color/background_card"
-            android:visibility="gone"
-            app:cardCornerRadius="8dp"
             android:layout_marginBottom="20dp"/>
-
-        <!-- Reference Number -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Reference Number"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:layout_marginBottom="5dp"/>
 
         <EditText
             android:id="@+id/edtReferenceNumber"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter reference number from GCash"
-            android:padding="12dp"
+            android:hint="Enter Reference Number"
+            android:padding="10dp"
             android:inputType="number"
-            android:textColor="@color/text_primary"
             android:layout_marginBottom="20dp"/>
 
-        <!-- Info Message -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⚠️ Note: GCash payment requires screenshot proof and reference number"
-            android:textSize="12sp"
-            android:textColor="@color/status_warning"
-            android:padding="12dp"
-            android:background="@color/background_light"
-            app:cardCornerRadius="8dp"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- Save Button -->
         <Button
             android:id="@+id/btnSavePayment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="💾 Save Payment Details"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/primary_color"
-            android:textColor="@color/text_white"
-            app:cornerRadius="8dp"/>
+            android:text="Save Payment"/>
 
     </LinearLayout>
 </ScrollView>
