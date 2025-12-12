@@ -2,23 +2,27 @@ package com.example.a4csofo;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.location.Location;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.*;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -29,7 +33,8 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
-import java.text.SimpleDateFormat;
+
+import java.io.IOException;
 import java.util.*;
 
 public class CheckoutActivity extends AppCompatActivity {
@@ -38,7 +43,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private LinearLayout cartContainer;
     private TextView txtSubtotal, txtVat, txtDelivery, txtTotal;
     private RadioGroup paymentGroup;
-    private Button btnConfirm;
+    private Button btnConfirm, btnSelectLocation;
 
     // Data
     private ArrayList<CartItem> cartList = new ArrayList<>();
@@ -48,7 +53,6 @@ public class CheckoutActivity extends AppCompatActivity {
     // Services
     private FirebaseAuth auth;
     private DatabaseReference cartRef;
-    private PaymentManager paymentManager;
     private FusedLocationProviderClient fusedLocationClient;
 
     // Order Details
@@ -57,27 +61,31 @@ public class CheckoutActivity extends AppCompatActivity {
     private String gcashProofDownloadUrl = "";
     private String pickupBranch = "";
     private String pickupTime = "";
-    private String orderType = "delivery";
     private Uri gcashImageUri = null;
 
     // Track selected payment method
     private String selectedPaymentMethod = "";
 
-    // Barangays list
+    // Barangays
     private final List<String> staCruzBarangays = Arrays.asList(
-            "BABAYAN", "BAGUMBAYAN", "BUBUKAL", "CALIOS", "GATID",
-            "ILAYANG BUKAL", "ILAYANG PALSABANGON", "ILAYANG PULONG BATO",
-            "IPAG", "KANLURANG BUKAL", "LABUIN", "LAGUNA", "MALINAO",
-            "PATIM", "SAN JOSE", "SANTIAGO", "SANTO ANGEL CENTRAL",
-            "SANTO ANGEL NORTE", "SANTO ANGEL SUR", "TALANGAN",
-            "UGONG", "POBLACION UNO", "POBLACION DOS", "POBLACION TRES",
-            "POBLACION CUATRO"
+            "BABAYAN","BAGUMBAYAN","BUBUKAL","CALIOS","GATID",
+            "ILAYANG BUKAL","ILAYANG PALSABANGON","ILAYANG PULONG BATO",
+            "IPAG","KANLURANG BUKAL","LABUIN","LAGUNA","MALINAO",
+            "PATIM","SAN JOSE","SANTIAGO","SANTO ANGEL CENTRAL",
+            "SANTO ANGEL NORTE","SANTO ANGEL SUR","TALANGAN",
+            "UGONG","POBLACION UNO","POBLACION DOS","POBLACION TRES","POBLACION CUATRO"
     );
 
     // Permissions
     private static final int REQ_CODE_PICK_IMAGE = 2001;
     private static final int LOCATION_PERMISSION_REQUEST = 1001;
     private static final String TAG = "CheckoutActivity";
+
+    // Callback interface for location
+    private interface LocationCallback {
+        void onLocationSuccess();
+        void onLocationFailed(String error);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,15 +94,10 @@ public class CheckoutActivity extends AppCompatActivity {
 
         Log.d(TAG, "onCreate started");
 
-        // Initialize
         auth = FirebaseAuth.getInstance();
-        paymentManager = new PaymentManager(this, auth);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // Setup UI
         setupUI();
-
-        // Load cart
         loadCartFromFirebase();
     }
 
@@ -106,439 +109,602 @@ public class CheckoutActivity extends AppCompatActivity {
         txtTotal = findViewById(R.id.txtTotal);
         paymentGroup = findViewById(R.id.paymentGroup);
         btnConfirm = findViewById(R.id.btnConfirm);
+        btnSelectLocation = findViewById(R.id.btnSelectLocation);
+
+        // Initial Payment Method State
+        for (int i = 0; i < paymentGroup.getChildCount(); i++) {
+            View child = paymentGroup.getChildAt(i);
+            if (child instanceof RadioButton) {
+                RadioButton rb = (RadioButton) child;
+                String text = rb.getText().toString().toLowerCase();
+                if (text.contains("pick")) {
+                    rb.setEnabled(true); // Pick Up always enabled
+                } else {
+                    rb.setEnabled(false); // COD & GCash disabled initially
+                }
+            }
+        }
 
         btnConfirm.setEnabled(false);
         btnConfirm.setAlpha(0.5f);
 
+        btnSelectLocation.setOnClickListener(v -> showDeliveryDialog());
         btnConfirm.setOnClickListener(v -> confirmOrder());
 
-        // FIXED: Use the CORRECT IDs from your layout
         paymentGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == -1) return;
+
             RadioButton selected = group.findViewById(checkedId);
-            if (selected != null) {
-                selectedPaymentMethod = selected.getText().toString();
-                btnConfirm.setEnabled(false);
-                btnConfirm.setAlpha(0.5f);
+            selectedPaymentMethod = selected.getText().toString().toLowerCase();
 
-                String paymentText = selected.getText().toString().toLowerCase();
+            btnConfirm.setEnabled(false);
+            btnConfirm.setAlpha(0.5f);
 
-                if (paymentText.contains("gcash")) {
-                    showGcashDialog();
-                } else if (paymentText.contains("cash") || paymentText.contains("delivery")) {
-                    showDeliveryDialog();
-                } else if (paymentText.contains("pick")) {
-                    showPickupDialog();
+            if (selectedPaymentMethod.contains("gcash")) {
+                if (deliveryLocation.isEmpty()) {
+                    Toast.makeText(this, "Please select location first", Toast.LENGTH_SHORT).show();
+                    paymentGroup.clearCheck();
+                    return;
                 }
+                showGcashDialog();
+            }
+            else if (selectedPaymentMethod.contains("cash")) {
+                if (deliveryLocation.isEmpty()) {
+                    Toast.makeText(this, "Please select location first", Toast.LENGTH_SHORT).show();
+                    paymentGroup.clearCheck();
+                    return;
+                }
+                btnConfirm.setEnabled(true);
+                btnConfirm.setAlpha(1f);
+            }
+            else if (selectedPaymentMethod.contains("pick")) {
+                showPickupDialog();
             }
         });
     }
 
-    // ====================== DIALOG METHODS ======================
+    private void enablePaymentMethods() {
+        for (int i = 0; i < paymentGroup.getChildCount(); i++) {
+            View child = paymentGroup.getChildAt(i);
+            if (child instanceof RadioButton) {
+                RadioButton rb = (RadioButton) child;
+                String text = rb.getText().toString().toLowerCase();
+                if (!text.contains("pick")) {
+                    rb.setEnabled(true); // COD & GCash enabled after location selected
+                }
+            }
+        }
+    }
+
+    // ------------------------------------
+    // LOCATION SELECTION
+    // ------------------------------------
     private void showDeliveryDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Select Delivery Location");
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_delivery_options, null);
 
-        // Find views with EXISTING IDs from dialog_delivery_options.xml
         RadioButton rbCurrent = dialogView.findViewById(R.id.rbCurrentLocation);
         RadioButton rbSaved = dialogView.findViewById(R.id.rbSavedAddress);
         RadioButton rbManual = dialogView.findViewById(R.id.rbManualInput);
+
         LinearLayout manualInputLayout = dialogView.findViewById(R.id.manualInputLayout);
         EditText edtStreet = dialogView.findViewById(R.id.edtStreetDetails);
         Spinner spinnerBarangay = dialogView.findViewById(R.id.spinnerBarangay);
 
-        // Setup spinner
         ArrayAdapter<String> barangayAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, staCruzBarangays);
         spinnerBarangay.setAdapter(barangayAdapter);
 
-        // Hide manual input by default
-        if (manualInputLayout != null) {
-            manualInputLayout.setVisibility(View.GONE);
-        }
+        manualInputLayout.setVisibility(View.GONE);
 
-        // Radio button listeners
-        if (rbCurrent != null) {
-            rbCurrent.setOnClickListener(v -> {
-                if (manualInputLayout != null) manualInputLayout.setVisibility(View.GONE);
-            });
-        }
-
-        if (rbSaved != null) {
-            rbSaved.setOnClickListener(v -> {
-                if (manualInputLayout != null) manualInputLayout.setVisibility(View.GONE);
-            });
-        }
-
-        if (rbManual != null) {
-            rbManual.setOnClickListener(v -> {
-                if (manualInputLayout != null) manualInputLayout.setVisibility(View.VISIBLE);
-            });
-        }
+        rbManual.setOnClickListener(v -> manualInputLayout.setVisibility(View.VISIBLE));
+        rbCurrent.setOnClickListener(v -> manualInputLayout.setVisibility(View.GONE));
+        rbSaved.setOnClickListener(v -> manualInputLayout.setVisibility(View.GONE));
 
         builder.setView(dialogView);
+        builder.setPositiveButton("Save", null); // We'll override later
+        builder.setNegativeButton("Cancel", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
 
-        builder.setPositiveButton("Save", (dialog, which) -> {
-            if (rbCurrent != null && rbCurrent.isChecked()) {
-                // Use Current Location
-                getCurrentLocation();
-            } else if (rbSaved != null && rbSaved.isChecked()) {
-                // Use Saved Address
-                getSavedAddress();
-            } else if (rbManual != null && rbManual.isChecked() && edtStreet != null && spinnerBarangay != null) {
-                // Manual Input
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (rbCurrent.isChecked()) {
+                getCurrentLocation(new LocationCallback() {
+                    @Override
+                    public void onLocationSuccess() {
+                        enablePaymentMethods();
+                        btnConfirm.setEnabled(true);
+                        btnConfirm.setAlpha(1f);
+                        dialog.dismiss();
+                        Toast.makeText(CheckoutActivity.this,
+                                "Current location saved: " + deliveryLocation, Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onLocationFailed(String error) {
+                        Toast.makeText(CheckoutActivity.this, error, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+            else if (rbSaved.isChecked()) {
+                getSavedAddress(new LocationCallback() {
+                    @Override
+                    public void onLocationSuccess() {
+                        enablePaymentMethods();
+                        btnConfirm.setEnabled(true);
+                        btnConfirm.setAlpha(1f);
+                        dialog.dismiss();
+                        Toast.makeText(CheckoutActivity.this,
+                                "Saved address loaded: " + deliveryLocation, Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onLocationFailed(String error) {
+                        Toast.makeText(CheckoutActivity.this, error, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+            else if (rbManual.isChecked()) {
                 String street = edtStreet.getText().toString().trim();
-                String barangay = spinnerBarangay.getSelectedItem() != null ?
-                        spinnerBarangay.getSelectedItem().toString() : "";
+                String barangay = spinnerBarangay.getSelectedItem().toString();
 
-                if (!street.isEmpty() && !barangay.isEmpty()) {
-                    validateManualAddress(street, barangay);
-                } else {
-                    Toast.makeText(this, "Please enter both street and barangay", Toast.LENGTH_SHORT).show();
+                if (street.isEmpty()) {
+                    Toast.makeText(this, "Enter street details", Toast.LENGTH_SHORT).show();
+                    return;
                 }
+
+                deliveryLocation = street + ", " + barangay + ", Sta. Cruz, Laguna";
+                enablePaymentMethods();
+                btnConfirm.setEnabled(true);
+                btnConfirm.setAlpha(1f);
+                Toast.makeText(this, "Location saved: " + deliveryLocation, Toast.LENGTH_LONG).show();
+                dialog.dismiss();
+            } else {
+                Toast.makeText(this, "Please select an option", Toast.LENGTH_SHORT).show();
             }
         });
-
-        builder.setNegativeButton("Cancel", (dialog, which) -> {
-            paymentGroup.clearCheck();
-        });
-
-        builder.show();
     }
 
-    // ====================== LOCATION METHODS ======================
-    private void getCurrentLocation() {
-        // Check location permission
+    // ------------------------------------
+// CHECK IF LOCATION IS WITHIN STA. CRUZ
+// ------------------------------------
+    private boolean isWithinStaCruzArea(double latitude, double longitude) {
+        // Sta. Cruz approximate boundaries
+        double minLat = 14.20;  // Southern boundary
+        double maxLat = 14.35;  // Northern boundary
+        double minLng = 121.35; // Western boundary
+        double maxLng = 121.50; // Eastern boundary
+
+        return latitude >= minLat && latitude <= maxLat &&
+                longitude >= minLng && longitude <= maxLng;
+    }
+    // ------------------------------------
+// GET ADDRESS FROM LOCATION
+// ------------------------------------
+    private void getAddressFromLocation(android.location.Location location,
+                                        LocationCallback callback,
+                                        ProgressDialog progressDialog) {
+        // If progressDialog is null, just ignore
+        if (progressDialog != null) progressDialog.setMessage("Fetching address...");
+
+        new Thread(() -> {
+            String addressStr = "";
+            try {
+                if (Geocoder.isPresent()) {
+                    Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                    List<Address> addresses = geocoder.getFromLocation(
+                            location.getLatitude(),
+                            location.getLongitude(),
+                            1
+                    );
+                    if (addresses != null && !addresses.isEmpty()) {
+                        Address address = addresses.get(0);
+                        addressStr = formatAddress(address);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if (addressStr.isEmpty()) {
+                // fallback to coordinates
+                addressStr = String.format(Locale.getDefault(),
+                        "Near %.6f°N, %.6f°E, Sta. Cruz, Laguna",
+                        location.getLatitude(),
+                        location.getLongitude());
+            }
+
+            String finalAddressStr = addressStr;
+            runOnUiThread(() -> {
+                if (progressDialog != null) progressDialog.dismiss();
+                deliveryLocation = finalAddressStr;
+                callback.onLocationSuccess();
+                Toast.makeText(CheckoutActivity.this,
+                        "Location saved: " + deliveryLocation,
+                        Toast.LENGTH_LONG).show();
+            });
+        }).start();
+    }
+
+    // ------------------------------------
+// FORMAT ADDRESS
+// ------------------------------------
+    private String formatAddress(Address address) {
+        StringBuilder sb = new StringBuilder();
+
+        String thoroughfare = address.getThoroughfare();
+        String subThoroughfare = address.getSubThoroughfare();
+        String subLocality = address.getSubLocality();
+        String featureName = address.getFeatureName();
+
+        if (subThoroughfare != null && !subThoroughfare.isEmpty()) sb.append(subThoroughfare).append(" ");
+        if (thoroughfare != null && !thoroughfare.isEmpty()) sb.append(thoroughfare);
+        if (sb.length() == 0 && featureName != null) sb.append(featureName);
+        if (subLocality != null && !subLocality.isEmpty()) sb.append(", ").append(subLocality);
+
+        sb.append(", Sta. Cruz, Laguna");
+        return sb.toString();
+    }
+
+
+    // GET CURRENT LOCATION (FIXED)
+    private void getCurrentLocation(LocationCallback callback) {
+        // Check permission
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     LOCATION_PERMISSION_REQUEST);
+            callback.onLocationFailed("Location permission needed. Please grant permission and try again.");
             return;
         }
 
-        // Get current location
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        if (location != null) {
-                            // Convert location to address (simplified)
-                            double lat = location.getLatitude();
-                            double lng = location.getLongitude();
+        // Show loading
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Getting your current location...");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
 
-                            // For now, just use a generic address since we're in Sta. Cruz, Laguna only
-                            deliveryLocation = "Current Location (GPS: " +
-                                    String.format("%.6f", lat) + ", " +
-                                    String.format("%.6f", lng) + "), Sta. Cruz, Laguna";
+        try {
+            // Create a high-accuracy single update request
+            com.google.android.gms.location.LocationRequest locationRequest =
+                    com.google.android.gms.location.LocationRequest.create();
+            locationRequest.setPriority(com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY);
+            locationRequest.setNumUpdates(1);
+            locationRequest.setInterval(0);
+            locationRequest.setFastestInterval(0);
 
-                            // Check COD limits
-                            checkCODLimitsWithAddress(deliveryLocation);
-                        } else {
-                            Toast.makeText(CheckoutActivity.this,
-                                    "Unable to get current location. Please use manual input.",
-                                    Toast.LENGTH_LONG).show();
-                            paymentGroup.clearCheck();
+            com.google.android.gms.location.LocationCallback locationCallback =
+                    new com.google.android.gms.location.LocationCallback() {
+                        @Override
+                        public void onLocationResult(com.google.android.gms.location.LocationResult locationResult) {
+                            progressDialog.dismiss();
+
+                            if (locationResult != null && locationResult.getLastLocation() != null) {
+                                android.location.Location location = locationResult.getLastLocation();
+
+                                if (isWithinStaCruzArea(location.getLatitude(), location.getLongitude())) {
+                                    // Convert to address
+                                    getAddressFromLocation(location, callback, progressDialog);
+                                } else {
+                                    callback.onLocationFailed("You are not within Sta. Cruz, Laguna delivery area. Please use manual input.");
+                                }
+                            } else {
+                                callback.onLocationFailed("Unable to get current location. Please try manual input.");
+                            }
+
+                            fusedLocationClient.removeLocationUpdates(this);
                         }
-                    }
-                });
+                    };
+
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+                    .addOnFailureListener(e -> {
+                        progressDialog.dismiss();
+                        callback.onLocationFailed("Failed to get location: " + e.getMessage());
+                    });
+
+        } catch (SecurityException e) {
+            progressDialog.dismiss();
+            callback.onLocationFailed("Location permission error.");
+        }
     }
 
-    private void getSavedAddress() {
-        FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) {
-            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show();
-            paymentGroup.clearCheck();
+    // GET SAVED ADDRESS (FIXED)
+    // ------------------------------------
+    private void getSavedAddress(LocationCallback callback) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            callback.onLocationFailed("User not logged in");
             return;
         }
 
-        // Check if user has saved address in Firebase
-        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users")
-                .child(currentUser.getUid()).child("savedAddress");
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(user.getUid());
 
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    String savedAddress = snapshot.getValue(String.class);
-                    if (savedAddress != null && !savedAddress.isEmpty()) {
-                        deliveryLocation = savedAddress + ", Sta. Cruz, Laguna";
-                        checkCODLimitsWithAddress(deliveryLocation);
-                    } else {
-                        Toast.makeText(CheckoutActivity.this,
-                                "No saved address found. Please add one first.",
-                                Toast.LENGTH_LONG).show();
-                        paymentGroup.clearCheck();
-                    }
-                } else {
-                    Toast.makeText(CheckoutActivity.this,
-                            "No saved address found. Please use manual input.",
-                            Toast.LENGTH_LONG).show();
-                    paymentGroup.clearCheck();
+                if (!snapshot.exists()) {
+                    callback.onLocationFailed("User data not found");
+                    return;
                 }
+
+                // Try different possible locations for saved address
+                String savedAddress = null;
+
+                // Check root level
+                if (snapshot.child("savedAddress").exists()) {
+                    savedAddress = snapshot.child("savedAddress").getValue(String.class);
+                }
+                // Check address field
+                else if (snapshot.child("address").exists()) {
+                    savedAddress = snapshot.child("address").getValue(String.class);
+                }
+                // Check profile/address
+                else if (snapshot.child("profile").child("address").exists()) {
+                    savedAddress = snapshot.child("profile").child("address").getValue(String.class);
+                }
+
+                if (savedAddress == null || savedAddress.isEmpty()) {
+                    callback.onLocationFailed("No saved address found. Please use manual input.");
+                    return;
+                }
+
+                // Ensure the address includes Sta. Cruz, Laguna
+                deliveryLocation = savedAddress;
+                if (!deliveryLocation.toLowerCase().contains("sta. cruz") &&
+                        !deliveryLocation.toLowerCase().contains("sta cruz")) {
+                    deliveryLocation += ", Sta. Cruz, Laguna";
+                }
+
+                callback.onLocationSuccess();
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(CheckoutActivity.this,
-                        "Error loading saved address",
-                        Toast.LENGTH_SHORT).show();
-                paymentGroup.clearCheck();
+                Log.e(TAG, "Database error: " + error.getMessage());
+                callback.onLocationFailed("Failed to load saved address: " + error.getMessage());
             }
         });
     }
 
-    private void validateManualAddress(String street, String barangay) {
-        // SIMPLE VALIDATION: Just check if barangay is in Sta. Cruz list
-        if (staCruzBarangays.contains(barangay.toUpperCase())) {
-            String fullAddress = street + ", " + barangay + ", Sta. Cruz, Laguna";
-            deliveryLocation = fullAddress;
-            checkCODLimitsWithAddress(fullAddress);
-        } else {
-            Toast.makeText(this,
-                    "Please select a valid barangay in Sta. Cruz, Laguna",
-                    Toast.LENGTH_LONG).show();
-            paymentGroup.clearCheck();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Location permission granted. Please select current location again.",
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Location permission denied. Please use manual input.",
+                        Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
-    private void checkCODLimitsWithAddress(String fullAddress) {
-        paymentManager.checkCOD(total, deliveryLocation, new PaymentManager.PaymentCallback() {
-            @Override
-            public void onAllowed() {
-                runOnUiThread(() -> {
-                    btnConfirm.setEnabled(true);
-                    btnConfirm.setAlpha(1f);
-                    Toast.makeText(CheckoutActivity.this, "✓ Delivery location saved!", Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onBlocked(String reason) {
-                runOnUiThread(() -> {
-                    new AlertDialog.Builder(CheckoutActivity.this)
-                            .setTitle("COD Not Available")
-                            .setMessage(reason)
-                            .setPositiveButton("OK", (dialog, which1) -> {
-                                paymentGroup.clearCheck();
-                                btnConfirm.setEnabled(false);
-                                btnConfirm.setAlpha(0.5f);
-                            })
-                            .show();
-                });
-            }
-        });
-    }
-
-    // ====================== GCASH DIALOG ======================
+    // ------------------------------------
+    // GCASH DIALOG
+    // ------------------------------------
     private void showGcashDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("GCash Payment");
 
         View view = getLayoutInflater().inflate(R.layout.dialog_gcash_combined, null);
         EditText edtRefNumber = view.findViewById(R.id.edtReferenceNumber);
-        Button btnUploadProof = view.findViewById(R.id.btnUploadProof);
-        EditText edtStreet = view.findViewById(R.id.edtStreet);
-        Spinner spinnerBarangay = view.findViewById(R.id.spinnerBarangay);
-
-        ArrayAdapter<String> barangayAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, staCruzBarangays);
-        spinnerBarangay.setAdapter(barangayAdapter);
+        Button btnUpload = view.findViewById(R.id.btnUploadProof);
 
         builder.setView(view);
 
-        btnUploadProof.setOnClickListener(v -> {
+        btnUpload.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_PICK);
             intent.setType("image/*");
             startActivityForResult(intent, REQ_CODE_PICK_IMAGE);
         });
 
         builder.setPositiveButton("Save", (dialog, which) -> {
-            String refNumber = edtRefNumber.getText().toString().trim();
-            String street = edtStreet.getText().toString().trim();
-            String barangay = spinnerBarangay.getSelectedItem() != null ?
-                    spinnerBarangay.getSelectedItem().toString() : "";
+            gcashReferenceNumber = edtRefNumber.getText().toString().trim();
 
-            if (refNumber.isEmpty() || street.isEmpty() || barangay.isEmpty()) {
-                Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show();
+            if (gcashReferenceNumber.isEmpty() || gcashImageUri == null) {
+                Toast.makeText(this, "Please complete GCash payment details", Toast.LENGTH_SHORT).show();
+                paymentGroup.clearCheck();
                 return;
             }
 
-            // Simple validation
-            if (staCruzBarangays.contains(barangay.toUpperCase())) {
-                deliveryLocation = street + ", " + barangay + ", Sta. Cruz, Laguna";
-                gcashReferenceNumber = refNumber;
+            btnConfirm.setEnabled(true);
+            btnConfirm.setAlpha(1f);
 
-                // Now check GCash limits WITH address
-                paymentManager.checkGCash(total, deliveryLocation, new PaymentManager.PaymentCallback() {
-                    @Override
-                    public void onAllowed() {
-                        runOnUiThread(() -> {
-                            btnConfirm.setEnabled(true);
-                            btnConfirm.setAlpha(1f);
-                            Toast.makeText(CheckoutActivity.this, "✓ GCash details saved!", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-
-                    @Override
-                    public void onBlocked(String reason) {
-                        runOnUiThread(() -> {
-                            new AlertDialog.Builder(CheckoutActivity.this)
-                                    .setTitle("GCash Not Available")
-                                    .setMessage(reason)
-                                    .setPositiveButton("OK", (dialog1, which1) -> {
-                                        paymentGroup.clearCheck();
-                                        btnConfirm.setEnabled(false);
-                                        btnConfirm.setAlpha(0.5f);
-                                    })
-                                    .show();
-                        });
-                    }
-                });
-            } else {
-                Toast.makeText(this, "Please select a valid barangay in Sta. Cruz, Laguna", Toast.LENGTH_LONG).show();
-            }
+            Toast.makeText(this, "GCash details saved!", Toast.LENGTH_SHORT).show();
         });
 
-        builder.setNegativeButton("Cancel", (dialog, which) -> {
-            paymentGroup.clearCheck();
-        });
-
+        builder.setNegativeButton("Cancel", (dialog, which) -> paymentGroup.clearCheck());
         builder.show();
     }
 
-    // ====================== PICKUP DIALOG ======================
+    // ------------------------------------
+    // PICKUP DIALOG
+    // ------------------------------------
     private void showPickupDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Pick-Up Options");
+        builder.setTitle("Pickup Options");
 
         View view = getLayoutInflater().inflate(R.layout.dialog_pickup_options, null);
-        Spinner branchSpinner = view.findViewById(R.id.spinnerBranch);
+        Spinner spinnerBranch = view.findViewById(R.id.spinnerBranch);
         EditText edtPickupTime = view.findViewById(R.id.edtPickupTime);
 
         List<String> branches = Arrays.asList("Bubukal Sta Cruz Laguna");
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches);
-        branchSpinner.setAdapter(adapter);
+        spinnerBranch.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, branches));
+
+        edtPickupTime.setOnClickListener(v -> {
+            Calendar now = Calendar.getInstance();
+            new TimePickerDialog(this, (dialog, hour, minute) ->
+                    edtPickupTime.setText(String.format("%02d:%02d", hour, minute)),
+                    now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), false).show();
+        });
 
         builder.setView(view);
 
-        // Time picker
-        edtPickupTime.setOnClickListener(v -> {
-            Calendar now = Calendar.getInstance();
-            new TimePickerDialog(this, (view1, hourOfDay, minute1) -> {
-                edtPickupTime.setText(String.format("%02d:%02d", hourOfDay, minute1));
-            }, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), false).show();
-        });
-
         builder.setPositiveButton("Save", (dialog, which) -> {
-            String selectedBranch = branchSpinner.getSelectedItem() != null ?
-                    branchSpinner.getSelectedItem().toString() : "Main Branch";
-            String selectedTime = edtPickupTime.getText().toString().trim();
-            if (selectedTime.isEmpty()) selectedTime = "ASAP";
+            pickupBranch = spinnerBranch.getSelectedItem().toString();
+            pickupTime = edtPickupTime.getText().toString();
 
-            pickupBranch = selectedBranch;
-            pickupTime = selectedTime;
-            deliveryLocation = "Pick-up at " + selectedBranch + " (" + selectedTime + ")";
+            if (pickupTime.isEmpty()) {
+                Toast.makeText(this, "Please select pickup time", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            // Check pickup limits
-            paymentManager.checkPickup(total, new PaymentManager.PaymentCallback() {
-                @Override
-                public void onAllowed() {
-                    runOnUiThread(() -> {
-                        btnConfirm.setEnabled(true);
-                        btnConfirm.setAlpha(1f);
-                        showQRCode(deliveryLocation);
-                    });
-                }
+            deliveryLocation = "Pickup at " + pickupBranch + " (" + pickupTime + ")";
 
-                @Override
-                public void onBlocked(String reason) {
-                    runOnUiThread(() -> {
-                        new AlertDialog.Builder(CheckoutActivity.this)
-                                .setTitle("Pickup Not Available")
-                                .setMessage(reason)
-                                .setPositiveButton("OK", (dialog1, which1) -> {
-                                    paymentGroup.clearCheck();
-                                    btnConfirm.setEnabled(false);
-                                    btnConfirm.setAlpha(0.5f);
-                                })
-                                .show();
-                    });
-                }
-            });
+            btnConfirm.setEnabled(true);
+            btnConfirm.setAlpha(1f);
+
+            showQRCode(deliveryLocation);
         });
 
-        builder.setNegativeButton("Cancel", (dialog, which) -> {
-            paymentGroup.clearCheck();
-        });
-
+        builder.setNegativeButton("Cancel", (dialog, which) -> paymentGroup.clearCheck());
         builder.show();
     }
 
-    // ====================== PERMISSION HANDLING ======================
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    // ------------------------------------
+    // QR CODE GENERATION
+    // ------------------------------------
+    private void showQRCode(String data) {
+        try {
+            int size = 400;
+            BitMatrix matrix = new MultiFormatWriter().encode(data, BarcodeFormat.QR_CODE, size, size);
+            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
 
-        if (requestCode == LOCATION_PERMISSION_REQUEST) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, get location
-                getCurrentLocation();
-            } else {
-                // Permission denied
-                Toast.makeText(this, "Location permission denied. Please use manual input.", Toast.LENGTH_LONG).show();
-                paymentGroup.clearCheck();
-            }
+            for (int x = 0; x < size; x++)
+                for (int y = 0; y < size; y++)
+                    bitmap.setPixel(x, y, matrix.get(x, y) ? Color.BLACK : Color.WHITE);
+
+            ImageView qrView = new ImageView(this);
+            qrView.setImageBitmap(bitmap);
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Pickup QR Code")
+                    .setView(qrView)
+                    .setPositiveButton("OK", null)
+                    .show();
+
+        } catch (WriterException e) {
+            Toast.makeText(this, "QR generation failed", Toast.LENGTH_SHORT).show();
         }
     }
 
-    // ====================== REST OF THE METHODS ======================
-    private void loadCartFromFirebase() {
-        FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) {
-            Toast.makeText(this, "Please login first", Toast.LENGTH_LONG).show();
-            finish();
+    @Override
+    protected void onActivityResult(int req, int result, @Nullable Intent data) {
+        super.onActivityResult(req, result, data);
+        if (req == REQ_CODE_PICK_IMAGE && result == RESULT_OK && data != null) {
+            gcashImageUri = data.getData();
+            Toast.makeText(this, "GCash proof image selected", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ------------------------------------
+    // CONFIRM ORDER
+    // ------------------------------------
+    private void confirmOrder() {
+        if (deliveryLocation.isEmpty()) {
+            Toast.makeText(this, "Please select delivery location first", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        cartRef = FirebaseDatabase.getInstance().getReference("carts").child(currentUser.getUid());
+        if (selectedPaymentMethod.contains("gcash")) {
+            if (gcashReferenceNumber.isEmpty() || gcashImageUri == null) {
+                Toast.makeText(this, "Please complete GCash payment details", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<String> items = new ArrayList<>();
+        for (CartItem item : cartList)
+            items.add(item.getName() + " x" + item.getQuantity());
+
+        OrderModel order = new OrderModel();
+        order.setUserId(user.getUid());
+        order.setItems(items);
+        order.setDeliveryLocation(deliveryLocation);
+        order.setPayment_method(selectedPaymentMethod);
+        order.setTotal_price(total);
+        order.setStatus("Pending");
+        order.setOrderDate(System.currentTimeMillis());
+
+        if (selectedPaymentMethod.contains("gcash"))
+            order.setGcashReferenceNumber(gcashReferenceNumber);
+
+        if (selectedPaymentMethod.contains("pick")) {
+            order.setPickupBranch(pickupBranch);
+            order.setPickupTime(pickupTime);
+        }
+
+        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
+        String key = ordersRef.push().getKey();
+        order.setOrderKey(key);
+
+        ordersRef.child(key).setValue(order).addOnSuccessListener(a -> {
+            if (cartRef != null) cartRef.removeValue();
+            showReceipt(items, total, selectedPaymentMethod);
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Failed to place order: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        });
+    }
+
+    private void showReceipt(List<String> items, double total, String method) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("🧾 ORDER RECEIPT\n\nItems:\n");
+        for (String i : items) sb.append("• ").append(i).append("\n");
+        sb.append("\nTotal: ₱").append(String.format("%.2f", total)).append("\n");
+        sb.append("Payment: ").append(method).append("\n");
+        sb.append("Location: ").append(deliveryLocation);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Order Confirmed!")
+                .setMessage(sb.toString())
+                .setPositiveButton("OK", (d, w) -> {
+                    Intent intent = new Intent(CheckoutActivity.this, MainActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .show();
+    }
+
+    // ------------------------------------
+    // CART METHODS
+    // ------------------------------------
+    private void loadCartFromFirebase() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        cartRef = FirebaseDatabase.getInstance().getReference("carts").child(user.getUid());
         cartRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cartList.clear();
                 cartItemAddOns.clear();
 
+                if (!snapshot.exists() || snapshot.getChildrenCount() == 0) {
+                    Toast.makeText(CheckoutActivity.this, "Your cart is empty", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
                     String name = itemSnapshot.child("name").getValue(String.class);
                     Double price = itemSnapshot.child("price").getValue(Double.class);
                     Long qty = itemSnapshot.child("quantity").getValue(Long.class);
 
-                    // Load add-ons
-                    List<ClientCartFragment.AddonSelection> addOns = new ArrayList<>();
-                    if (itemSnapshot.hasChild("addons")) {
-                        for (DataSnapshot addonSnapshot : itemSnapshot.child("addons").getChildren()) {
-                            ClientCartFragment.AddonSelection addon = addonSnapshot.getValue(ClientCartFragment.AddonSelection.class);
-                            if (addon != null) addOns.add(addon);
-                        }
-                    }
-
-                    if (name != null && price != null && qty != null) {
-                        CartItem item = new CartItem(name, qty.intValue(), price);
-                        cartList.add(item);
-
-                        String itemKey = itemSnapshot.getKey();
-                        if (itemKey != null && !addOns.isEmpty()) {
-                            cartItemAddOns.put(itemKey, addOns);
-                        }
-                    }
-                }
-
-                if (cartList.isEmpty()) {
-                    Toast.makeText(CheckoutActivity.this, "Cart is empty", Toast.LENGTH_SHORT).show();
-                    finish();
-                    return;
+                    if (name != null && price != null && qty != null)
+                        cartList.add(new CartItem(name, qty.intValue(), price));
                 }
 
                 displayCartItems();
@@ -546,7 +712,8 @@ public class CheckoutActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(CheckoutActivity.this, "Failed to load cart", Toast.LENGTH_SHORT).show();
+                Toast.makeText(CheckoutActivity.this, "Failed to load cart: " + error.getMessage(),
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -556,56 +723,20 @@ public class CheckoutActivity extends AppCompatActivity {
         subtotal = 0;
 
         LayoutInflater inflater = LayoutInflater.from(this);
-        List<String> itemKeys = new ArrayList<>(cartItemAddOns.keySet());
 
-        for (int i = 0; i < cartList.size(); i++) {
-            CartItem item = cartList.get(i);
-            View itemView = inflater.inflate(R.layout.item_cart_checkout, cartContainer, false);
+        for (CartItem item : cartList) {
+            View view = inflater.inflate(R.layout.item_cart_checkout, cartContainer, false);
 
-            TextView txtName = itemView.findViewById(R.id.txtItemName);
-            TextView txtDescription = itemView.findViewById(R.id.txtItemDescription);
-            TextView txtQty = itemView.findViewById(R.id.txtItemQty);
-            TextView txtPrice = itemView.findViewById(R.id.txtItemPrice);
+            TextView txtName = view.findViewById(R.id.txtItemName);
+            TextView txtQty = view.findViewById(R.id.txtItemQty);
+            TextView txtPrice = view.findViewById(R.id.txtItemPrice);
 
             txtName.setText(item.getName());
+            txtQty.setText("x" + item.getQuantity());
+            txtPrice.setText("₱" + String.format("%.2f", item.getQuantity() * item.getPrice()));
 
-            // Get add-ons
-            List<ClientCartFragment.AddonSelection> addOns = null;
-            if (i < itemKeys.size()) {
-                String itemKey = itemKeys.get(i);
-                addOns = cartItemAddOns.get(itemKey);
-            }
-
-            // Display with add-ons
-            if (addOns != null && !addOns.isEmpty()) {
-                StringBuilder addOnsText = new StringBuilder();
-                double itemAddonsTotal = 0;
-
-                for (ClientCartFragment.AddonSelection addon : addOns) {
-                    double addonTotal = addon.price * addon.quantity;
-                    itemAddonsTotal += addonTotal;
-                    addOnsText.append("+ ").append(addon.name);
-                    if (addon.quantity > 1) addOnsText.append(" (x").append(addon.quantity).append(")");
-                    addOnsText.append(" - ₱").append(String.format("%.2f", addonTotal)).append("\n");
-                }
-
-                txtDescription.setText(addOnsText.toString());
-                txtDescription.setVisibility(View.VISIBLE);
-
-                double itemBaseTotal = item.getQuantity() * item.getPrice();
-                double itemTotal = itemBaseTotal + itemAddonsTotal;
-
-                txtQty.setText("x" + item.getQuantity());
-                txtPrice.setText("₱" + String.format("%.2f", itemTotal));
-                subtotal += itemTotal;
-            } else {
-                txtDescription.setVisibility(View.GONE);
-                txtQty.setText("x" + item.getQuantity());
-                txtPrice.setText("₱" + String.format("%.2f", item.getQuantity() * item.getPrice()));
-                subtotal += item.getQuantity() * item.getPrice();
-            }
-
-            cartContainer.addView(itemView);
+            subtotal += item.getQuantity() * item.getPrice();
+            cartContainer.addView(view);
         }
 
         updateTotals();
@@ -621,155 +752,15 @@ public class CheckoutActivity extends AppCompatActivity {
         txtTotal.setText("₱" + String.format("%.2f", total));
     }
 
-    private void showQRCode(String data) {
-        try {
-            int size = 400;
-            BitMatrix bitMatrix = new MultiFormatWriter().encode(data, BarcodeFormat.QR_CODE, size, size);
-            Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565);
-
-            for (int x = 0; x < size; x++) {
-                for (int y = 0; y < size; y++) {
-                    bitmap.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
-                }
-            }
-
-            ImageView qrView = new ImageView(this);
-            qrView.setImageBitmap(bitmap);
-
-            new AlertDialog.Builder(this)
-                    .setTitle("Your Pickup QR Code")
-                    .setView(qrView)
-                    .setPositiveButton("OK", null)
-                    .show();
-
-        } catch (WriterException e) {
-            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_CODE_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
-            gcashImageUri = data.getData();
-            Toast.makeText(this, "Payment proof selected", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    // ====================== CONFIRM ORDER ======================
-    private void confirmOrder() {
-        if (selectedPaymentMethod.isEmpty()) {
-            Toast.makeText(this, "Select payment method", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Validate fields based on payment method
-        if (selectedPaymentMethod.toLowerCase().contains("gcash")) {
-            if (gcashReferenceNumber.isEmpty() || deliveryLocation.isEmpty() || gcashImageUri == null) {
-                Toast.makeText(this, "Complete GCash details and upload proof", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        } else if (selectedPaymentMethod.toLowerCase().contains("cash")) {
-            if (deliveryLocation.isEmpty()) {
-                Toast.makeText(this, "Select delivery location", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        } else if (selectedPaymentMethod.toLowerCase().contains("pick")) {
-            if (deliveryLocation.isEmpty()) {
-                Toast.makeText(this, "Select pickup details", Toast.LENGTH_SHORT).show();
-                return;
-            }
-        }
-
-        // Prepare order
-        List<String> itemsList = new ArrayList<>();
-        for (int i = 0; i < cartList.size(); i++) {
-            CartItem item = cartList.get(i);
-            itemsList.add(item.getName() + " x" + item.getQuantity() +
-                    " - ₱" + String.format("%.2f", item.getQuantity() * item.getPrice()));
-        }
-
-        // Create order in Firebase
-        FirebaseUser currentUser = auth.getCurrentUser();
-        if (currentUser == null) {
-            Toast.makeText(this, "Please login", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        OrderModel order = new OrderModel();
-        order.setUserId(currentUser.getUid());
-        order.setCustomerName(currentUser.getDisplayName() != null ?
-                currentUser.getDisplayName() : currentUser.getEmail());
-        order.setItems(itemsList);
-        order.setTotal_price(total);
-        order.setPayment_method(selectedPaymentMethod);
-        order.setStatus("Pending");
-        order.setOrderType(selectedPaymentMethod.toLowerCase().contains("pick") ? "pickup" : "delivery");
-        order.setOrderDate(System.currentTimeMillis());
-        order.setDeliveryLocation(deliveryLocation);
-
-        if (selectedPaymentMethod.toLowerCase().contains("gcash")) {
-            order.setGcashReferenceNumber(gcashReferenceNumber);
-        }
-
-        if (selectedPaymentMethod.toLowerCase().contains("pick")) {
-            order.setPickupBranch(pickupBranch);
-            order.setPickupTime(pickupTime);
-        }
-
-        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("orders");
-        String key = ordersRef.push().getKey();
-        if (key == null) {
-            Toast.makeText(this, "Error creating order", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        order.setOrderKey(key);
-        ordersRef.child(key).setValue(order).addOnSuccessListener(aVoid -> {
-            // Clear cart
-            if (cartRef != null) {
-                cartRef.removeValue();
-            }
-
-            // Show receipt
-            showReceipt(itemsList, total, selectedPaymentMethod);
-        }).addOnFailureListener(e -> {
-            Toast.makeText(this, "Order failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        });
-    }
-
-    private void showReceipt(List<String> items, double total, String paymentMethod) {
-        StringBuilder receipt = new StringBuilder();
-        receipt.append("🧾 ORDER RECEIPT\n\n");
-        receipt.append("Items:\n");
-        for (String item : items) {
-            receipt.append("• ").append(item).append("\n");
-        }
-        receipt.append("\nTotal: ₱").append(String.format("%.2f", total)).append("\n");
-        receipt.append("Payment: ").append(paymentMethod).append("\n");
-        receipt.append("Location: ").append(deliveryLocation).append("\n");
-
-        if (paymentMethod.toLowerCase().contains("gcash") && !gcashReferenceNumber.isEmpty()) {
-            receipt.append("GCash Ref: ").append(gcashReferenceNumber).append("\n");
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("✅ Order Confirmed!")
-                .setMessage(receipt.toString())
-                .setPositiveButton("OK", (dialog, which) -> finish())
-                .show();
-    }
-
-    // CartItem inner class
     public class CartItem {
         private String name;
         private int quantity;
         private double price;
 
-        public CartItem(String name, int quantity, double price) {
-            this.name = name;
-            this.quantity = quantity;
-            this.price = price;
+        public CartItem(String n, int q, double p) {
+            name = n;
+            quantity = q;
+            price = p;
         }
 
         public String getName() { return name; }
