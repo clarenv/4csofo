@@ -3,5 +3,5 @@
     <solid android:color="@color/white" /> <!-- Background color ng bilog -->
     <stroke
         android:width="2dp"
-        android:color="@color/primary" /> <!-- Optional: border color -->
+        android:color="@color/white" /> <!-- Optional: border color -->
 </shape>

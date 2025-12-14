@@ -23,163 +23,156 @@ import java.util.Locale;
 
 public class OrdersAdapter extends RecyclerView.Adapter<OrdersAdapter.OrderViewHolder> {
 
-    private Context context;
-    private List<OrderModel> orderList;
-    private OnOrderClickListener listener;
-    private int expandedPosition = -1;
+    private Context Context;
+    private List<OrderModel> OrderList;
+    private OnOrderClickListener Listener;
+    private int ExpandedPosition = -1;
 
+    // Listener interface
     public interface OnOrderClickListener {
         void onOrderClick(OrderModel order);
         void onViewReceiptClick(OrderModel order);
+        void onRateFoodClick(OrderModel order);
+        void onCancelOrderClick(OrderModel order);
     }
 
     public void setOnOrderClickListener(OnOrderClickListener listener) {
-        this.listener = listener;
+        this.Listener = listener;
     }
 
     public OrdersAdapter(Context context, List<OrderModel> orderList) {
-        this.context = context;
-        this.orderList = new ArrayList<>(orderList);
+        this.Context = context;
+        this.OrderList = new ArrayList<>(orderList);
         sortByLatest();
     }
 
     @NonNull
     @Override
     public OrderViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_order, parent, false);
+        View view = LayoutInflater.from(Context).inflate(R.layout.item_order, parent, false);
         return new OrderViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull OrderViewHolder holder, @SuppressLint("RecyclerView") int position) {
-        OrderModel order = orderList.get(position);
-        if (order == null) return;
+        OrderModel Order = OrderList.get(position);
+        if (Order == null) return;
 
-        // Calculate order number (reverse position since sorted by latest)
-        int orderNumber = getItemCount() - position;
-        holder.bind(order, orderNumber);
+        int OrderNumber = getItemCount() - position;
+        holder.bind(Order, OrderNumber);
 
-        // Expand/collapse
-        boolean isExpanded = position == expandedPosition;
-        holder.layoutExpandContent.setVisibility(isExpanded ? View.VISIBLE : View.GONE);
-        if (holder.imgExpandArrow != null) {
-            holder.imgExpandArrow.setRotation(isExpanded ? 180f : 0f);
+        boolean IsExpanded = position == ExpandedPosition;
+        holder.LayoutExpandContent.setVisibility(IsExpanded ? View.VISIBLE : View.GONE);
+        if (holder.ImgExpandArrow != null) {
+            holder.ImgExpandArrow.setRotation(IsExpanded ? 180f : 0f);
         }
 
-        // Click to expand/collapse
+        // Expand/collapse click
         holder.itemView.setOnClickListener(v -> {
-            int previous = expandedPosition;
-
-            if (isExpanded) {
-                expandedPosition = -1;
+            int Previous = ExpandedPosition;
+            if (IsExpanded) {
+                ExpandedPosition = -1;
             } else {
-                expandedPosition = position;
+                ExpandedPosition = position;
             }
-
-            if (previous != -1) {
-                notifyItemChanged(previous);
-            }
+            if (Previous != -1) notifyItemChanged(Previous);
             notifyItemChanged(position);
 
-            if (listener != null) {
-                listener.onOrderClick(order);
-            }
+            if (Listener != null) Listener.onOrderClick(Order);
         });
 
         // View Receipt button
-        if (holder.btnViewReceipt != null) {
-            holder.btnViewReceipt.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onViewReceiptClick(order);
-                }
+        if (holder.BtnViewReceipt != null) {
+            holder.BtnViewReceipt.setOnClickListener(v -> {
+                if (Listener != null) Listener.onViewReceiptClick(Order);
+            });
+        }
+
+        // Rate Food button - only visible if order is completed
+        if (holder.BtnRateFood != null) {
+            if ("completed".equalsIgnoreCase(Order.getStatus()) &&
+                    Order.getItems() != null && !Order.getItems().isEmpty()) {
+                holder.BtnRateFood.setVisibility(View.VISIBLE);
+            } else {
+                holder.BtnRateFood.setVisibility(View.GONE);
+            }
+            holder.BtnRateFood.setOnClickListener(v -> {
+                if (Listener != null) Listener.onRateFoodClick(Order);
+            });
+        }
+
+        // Cancel Order button - only visible if Pending
+        if (holder.BtnCancelOrder != null) {
+            if ("pending".equalsIgnoreCase(Order.getStatus())) {
+                holder.BtnCancelOrder.setVisibility(View.VISIBLE);
+            } else {
+                holder.BtnCancelOrder.setVisibility(View.GONE);
+            }
+            holder.BtnCancelOrder.setOnClickListener(v -> {
+                if (Listener != null) Listener.onCancelOrderClick(Order);
             });
         }
     }
 
     @Override
     public int getItemCount() {
-        return orderList != null ? orderList.size() : 0;
+        return OrderList != null ? OrderList.size() : 0;
     }
 
     public void sortByLatest() {
-        Collections.sort(orderList, new Comparator<OrderModel>() {
-            @Override
-            public int compare(OrderModel o1, OrderModel o2) {
-                return Long.compare(o2.getOrderDate(), o1.getOrderDate());
-            }
-        });
+        Collections.sort(OrderList, (O1, O2) -> Long.compare(O2.getOrderDate(), O1.getOrderDate()));
         notifyDataSetChanged();
     }
 
-    public void updateOrders(List<OrderModel> newOrders) {
-        this.orderList = new ArrayList<>(newOrders);
+    public void updateOrders(List<OrderModel> NewOrders) {
+        this.OrderList = new ArrayList<>(NewOrders);
         sortByLatest();
-        expandedPosition = -1;
+        ExpandedPosition = -1;
         notifyDataSetChanged();
     }
 
     static class OrderViewHolder extends RecyclerView.ViewHolder {
-        // Header views
-        TextView txtOrderNumber, txtOrderDate, txtStatus, txtTotal;
-
-        // Expandable content views
-        LinearLayout layoutExpandContent;
-        TextView txtPayment, txtItems;
-        ImageView imgExpandArrow;
-        Button btnViewReceipt;
+        TextView TxtOrderNumber, TxtOrderDate, TxtStatus, TxtTotal;
+        LinearLayout LayoutExpandContent;
+        TextView TxtPayment, TxtItems;
+        ImageView ImgExpandArrow;
+        Button BtnViewReceipt, BtnRateFood, BtnCancelOrder;
 
         public OrderViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            // Header views
-            txtOrderNumber = itemView.findViewById(R.id.txtOrderId); // Now shows Order #1, #2, etc.
-            txtTotal = itemView.findViewById(R.id.txtTotal);
-            txtOrderDate = itemView.findViewById(R.id.txtOrderDate);
-            txtStatus = itemView.findViewById(R.id.txtStatus);
+            TxtOrderNumber = itemView.findViewById(R.id.txtOrderId);
+            TxtTotal = itemView.findViewById(R.id.txtTotal);
+            TxtOrderDate = itemView.findViewById(R.id.txtOrderDate);
+            TxtStatus = itemView.findViewById(R.id.txtStatus);
 
-            // Expandable content
-            layoutExpandContent = itemView.findViewById(R.id.layoutExpandContent);
-            txtPayment = itemView.findViewById(R.id.txtPayment);
-            txtItems = itemView.findViewById(R.id.txtItems);
+            LayoutExpandContent = itemView.findViewById(R.id.layoutExpandContent);
+            TxtPayment = itemView.findViewById(R.id.txtPayment);
+            TxtItems = itemView.findViewById(R.id.txtItems);
 
-            // Optional views
-            try {
-                imgExpandArrow = itemView.findViewById(R.id.imgExpandArrow);
-            } catch (Exception e) {
-                imgExpandArrow = null;
-            }
-
-            try {
-                btnViewReceipt = itemView.findViewById(R.id.btnViewReceipt);
-            } catch (Exception e) {
-                btnViewReceipt = null;
-            }
+            ImgExpandArrow = itemView.findViewById(R.id.imgExpandArrow);
+            BtnViewReceipt = itemView.findViewById(R.id.btnViewReceipt);
+            BtnRateFood = itemView.findViewById(R.id.btnRateFood);
+            BtnCancelOrder = itemView.findViewById(R.id.btnCancelOrder);
         }
 
         public void bind(OrderModel order, int orderNumber) {
-            // Display Order #1, #2, #3, etc. (latest order = highest number)
-            txtOrderNumber.setText(String.format(Locale.getDefault(), "Order #%d", orderNumber));
+            TxtOrderNumber.setText(String.format(Locale.getDefault(), "Order #%d", orderNumber));
+            TxtTotal.setText(order.getFormattedTotalForDisplay());
 
-            // Total price
-            txtTotal.setText(order.getFormattedTotalForDisplay());
+            String Status = order.getStatus() != null ? order.getStatus() : "Pending";
+            TxtStatus.setText(Status);
+            TxtStatus.setTextColor(getStatusColor(Status));
 
-            // Status with color
-            String status = order.getStatus() != null ? order.getStatus() : "Pending";
-            txtStatus.setText(status);
-            txtStatus.setTextColor(getStatusColor(status));
-
-            // Order date
             if (order.getOrderDate() > 0) {
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault());
-                String date = sdf.format(new Date(order.getOrderDate()));
-                txtOrderDate.setText(date);
+                TxtOrderDate.setText(sdf.format(new Date(order.getOrderDate())));
             } else {
-                txtOrderDate.setText("Date N/A");
+                TxtOrderDate.setText("Date N/A");
             }
 
-            // Expandable content
-            txtPayment.setText(order.getPayment_method());
-            txtItems.setText(order.getItemsAsStringForDisplay());
+            TxtPayment.setText(order.getPayment_method());
+            TxtItems.setText(order.getItemsAsStringForDisplay());
         }
 
         private int getStatusColor(String status) {

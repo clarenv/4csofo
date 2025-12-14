@@ -9,15 +9,16 @@
         android:icon="@drawable/ic_admin_orders"
         android:title="Orders"/>
     <item
-        android:id="@+id/nav_famous"
-        android:icon="@drawable/ic_star"
-        android:title="Sales" />
+        android:id="@+id/nav_menu_items"
+        android:icon="@drawable/ic_admin_menu_items"
+        android:title="Add Menu"/>
+
     <item
         android:id="@+id/nav_categories"
         android:icon="@drawable/ic_admin_categories"
         android:title="Categories"/>
     <item
-        android:id="@+id/nav_menu_items"
-        android:icon="@drawable/ic_admin_menu_items"
-        android:title="Menu Items"/>
+        android:id="@+id/nav_famous"
+        android:icon="@drawable/ic_star"
+        android:title="Sales" />
 </menu>

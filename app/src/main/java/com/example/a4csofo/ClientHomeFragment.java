@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -257,14 +258,13 @@ public class ClientHomeFragment extends Fragment {
                 for (DataSnapshot itemSnapshot : snapshot.getChildren()) {
                     FoodItem food = itemSnapshot.getValue(FoodItem.class);
                     if (food != null) {
+                        // Load discounts
                         if (itemSnapshot.child("discountSenior").exists()) {
                             Object seniorDiscount = itemSnapshot.child("discountSenior").getValue();
                             if (seniorDiscount != null) {
                                 try {
                                     food.discountSenior = Double.parseDouble(seniorDiscount.toString());
-                                } catch (NumberFormatException e) {
-                                    food.discountSenior = 0;
-                                }
+                                } catch (NumberFormatException e) { food.discountSenior = 0; }
                             }
                         }
 
@@ -273,9 +273,23 @@ public class ClientHomeFragment extends Fragment {
                             if (pwdDiscount != null) {
                                 try {
                                     food.discountPWD = Double.parseDouble(pwdDiscount.toString());
-                                } catch (NumberFormatException e) {
-                                    food.discountPWD = 0;
-                                }
+                                } catch (NumberFormatException e) { food.discountPWD = 0; }
+                            }
+                        }
+
+                        // Load ratings
+                        if (itemSnapshot.child("rating").exists()) {
+                            Object ratingObj = itemSnapshot.child("rating").getValue();
+                            if (ratingObj != null) {
+                                try { food.rating = Double.parseDouble(ratingObj.toString()); }
+                                catch (NumberFormatException e) { food.rating = 0; }
+                            }
+                        }
+                        if (itemSnapshot.child("ratingCount").exists()) {
+                            Object ratingCountObj = itemSnapshot.child("ratingCount").getValue();
+                            if (ratingCountObj != null) {
+                                try { food.ratingCount = Integer.parseInt(ratingCountObj.toString()); }
+                                catch (NumberFormatException e) { food.ratingCount = 0; }
                             }
                         }
 
@@ -318,6 +332,8 @@ public class ClientHomeFragment extends Fragment {
         LinearLayout discountPWDLayout = dialogView.findViewById(R.id.discountPWDLayout);
         Button btnAddToCart = dialogView.findViewById(R.id.btnAddToCartModal);
         Button btnClose = dialogView.findViewById(R.id.btnCloseModal);
+        RatingBar ratingBar = dialogView.findViewById(R.id.ratingBarModal);
+        TextView tvRatingText = dialogView.findViewById(R.id.tvFoodRatingModal);
 
         // Set food data
         tvFoodName.setText(food.name);
@@ -329,11 +345,8 @@ public class ClientHomeFragment extends Fragment {
         // Load image
         if (food.base64Image != null && !food.base64Image.isEmpty()) {
             Bitmap bitmap = base64ToBitmap(food.base64Image);
-            if (bitmap != null) {
-                ivFoodImage.setImageBitmap(bitmap);
-            } else {
-                ivFoodImage.setImageResource(R.drawable.ic_placeholder);
-            }
+            if (bitmap != null) ivFoodImage.setImageBitmap(bitmap);
+            else ivFoodImage.setImageResource(R.drawable.ic_placeholder);
         } else {
             ivFoodImage.setImageResource(R.drawable.ic_placeholder);
         }
@@ -352,6 +365,11 @@ public class ClientHomeFragment extends Fragment {
         } else {
             discountPWDLayout.setVisibility(View.GONE);
         }
+
+        // Show rating
+        ratingBar.setRating((float) food.rating);
+        if (food.ratingCount > 0) tvRatingText.setText(String.format("%.1f/5 (%d ratings)", food.rating, food.ratingCount));
+        else tvRatingText.setText("Not yet rated");
 
         // Add to cart button
         btnAddToCart.setOnClickListener(v -> {
@@ -468,6 +486,15 @@ public class ClientHomeFragment extends Fragment {
                 holder.btnAddCart.setText("Unavailable");
             }
 
+            // ===== RATING DISPLAY IN ITEM =====
+            if (food.ratingCount > 0) {
+                holder.ratingBar.setRating((float) food.rating);
+                holder.tvRating.setText(String.format("%.1f/5 (%d ratings)", food.rating, food.ratingCount));
+            } else {
+                holder.ratingBar.setRating(0);
+                holder.tvRating.setText("Not yet rated");
+            }
+
             holder.itemView.setOnClickListener(v -> showFoodDetailsModal(food));
             holder.itemView.setOnLongClickListener(v -> {
                 Toast.makeText(v.getContext(), food.name + " - " + formatPrice(food.price), Toast.LENGTH_SHORT).show();
@@ -528,7 +555,8 @@ public class ClientHomeFragment extends Fragment {
 
         class FoodViewHolder extends RecyclerView.ViewHolder {
             ImageView ivFoodImage;
-            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime;
+            TextView tvName, tvPrice, tvDesc, tvCategory, tvPrepTime, tvRating;
+            RatingBar ratingBar;
             Button btnAddCart;
 
             public FoodViewHolder(@NonNull View itemView) {
@@ -539,6 +567,8 @@ public class ClientHomeFragment extends Fragment {
                 tvDesc = itemView.findViewById(R.id.tvFoodDesc);
                 tvCategory = itemView.findViewById(R.id.tvFoodCategory);
                 tvPrepTime = itemView.findViewById(R.id.tvFoodPrepTime);
+                tvRating = itemView.findViewById(R.id.tvFoodRating); // add TextView in layout
+                ratingBar = itemView.findViewById(R.id.ratingBar);    // add RatingBar in layout
                 btnAddCart = itemView.findViewById(R.id.btnAddCart);
             }
         }
@@ -555,6 +585,9 @@ public class ClientHomeFragment extends Fragment {
         public boolean available = true;
         public double discountSenior = 0;
         public double discountPWD = 0;
+
+        public double rating = 0;
+        public int ratingCount = 0;
 
         public FoodItem() {}
     }

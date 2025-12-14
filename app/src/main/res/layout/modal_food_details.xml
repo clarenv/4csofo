@@ -73,7 +73,35 @@
                 android:text="Prep Time: 0 mins"
                 android:textSize="14sp"
                 android:textColor="#666666"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Rating -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <RatingBar
+                    android:id="@+id/ratingBarModal"
+                    style="@style/Widget.AppCompat.RatingBar.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:numStars="5"
+                    android:stepSize="0.5"
+                    android:isIndicator="true"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/tvFoodRatingModal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Not yet rated"
+                    android:textSize="14sp"
+                    android:textColor="#666666" />
+
+            </LinearLayout>
 
             <!-- Description -->
             <TextView
@@ -191,8 +219,8 @@
             android:layout_weight="1"
             android:text="Close"
             android:layout_marginEnd="8dp"
-            android:background="#E0E0E0"
-            android:textColor="#666666"/>
+            android:backgroundTint="@color/primary"
+            android:textColor="#FF0000"/>
 
         <Button
             android:id="@+id/btnAddToCartModal"
@@ -201,7 +229,7 @@
             android:layout_weight="1"
             android:text="Add to Cart"
             android:layout_marginStart="8dp"
-            android:background="#10A048"
+            android:backgroundTint="@color/primary"
             android:textColor="#FFFFFF"/>
     </LinearLayout>
 

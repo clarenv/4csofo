@@ -60,9 +60,9 @@ public class AdminCategoriesFragment extends Fragment {
     private Bitmap selectedImageBitmap;
     private String selectedImageBase64;
 
-    // References to current dialog views
-    private ImageView currentDialogImageView;
-    private LinearLayout currentDialogPlaceholderLayout;
+    // Store current food being updated
+    private ItemAdminCategory currentUpdatingFood;
+    private int currentUpdatePosition = -1;
 
     @SuppressLint("MissingInflatedId")
     @Nullable
@@ -120,11 +120,6 @@ public class AdminCategoriesFragment extends Fragment {
                             selectedImageBitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
                             selectedImageBase64 = bitmapToBase64(selectedImageBitmap);
                             showSuccessToast("Image selected");
-
-                            // Update the image in dialog immediately
-                            if (currentDialogImageView != null && currentDialogPlaceholderLayout != null) {
-                                updateImageInDialog(currentDialogImageView, currentDialogPlaceholderLayout, selectedImageBase64);
-                            }
                         } catch (IOException e) {
                             e.printStackTrace();
                             Toast.makeText(getContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
@@ -143,11 +138,6 @@ public class AdminCategoriesFragment extends Fragment {
                             selectedImageBitmap = (Bitmap) extras.get("data");
                             selectedImageBase64 = bitmapToBase64(selectedImageBitmap);
                             showSuccessToast("Photo taken");
-
-                            // Update the image in dialog immediately
-                            if (currentDialogImageView != null && currentDialogPlaceholderLayout != null) {
-                                updateImageInDialog(currentDialogImageView, currentDialogPlaceholderLayout, selectedImageBase64);
-                            }
                         }
                     }
                 }
@@ -159,6 +149,7 @@ public class AdminCategoriesFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 foodList.clear();
+                filteredList.clear();
 
                 // Collect unique categories for spinner
                 Set<String> categoriesSet = new HashSet<>();
@@ -271,16 +262,25 @@ public class AdminCategoriesFragment extends Fragment {
             }
 
             holder.switchAvailable.setChecked(food.isAvailable());
+            holder.switchAvailable.setOnCheckedChangeListener(null); // Clear previous listener
             holder.switchAvailable.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 food.setAvailable(isChecked);
                 foodsRef.child(food.getKey()).child("available").setValue(isChecked)
                         .addOnSuccessListener(aVoid -> {
                             showSuccessToast("Availability updated");
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            holder.switchAvailable.setChecked(!isChecked); // Revert if failed
                         });
             });
 
             // Update button click
-            holder.btnUpdate.setOnClickListener(v -> showSmartUpdateFoodDialog(food, position));
+            holder.btnUpdate.setOnClickListener(v -> {
+                currentUpdatingFood = food;
+                currentUpdatePosition = holder.getAdapterPosition();
+                showSmartUpdateFoodDialog(food);
+            });
 
             // Delete button click
             holder.btnDelete.setOnClickListener(v -> {
@@ -324,7 +324,7 @@ public class AdminCategoriesFragment extends Fragment {
         }
     }
 
-    private void showSmartUpdateFoodDialog(ItemAdminCategory food, int position) {
+    private void showSmartUpdateFoodDialog(ItemAdminCategory food) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Update " + food.getName());
 
@@ -334,7 +334,6 @@ public class AdminCategoriesFragment extends Fragment {
 
         // Initialize form fields
         ImageView ivCurrentFoodImage = dialogView.findViewById(R.id.ivCurrentFoodImage);
-        LinearLayout placeholderLayout = dialogView.findViewById(R.id.placeholderLayout);
         FloatingActionButton fabPickImage = dialogView.findViewById(R.id.fabPickImage);
 
         EditText etName = dialogView.findViewById(R.id.etName);
@@ -345,12 +344,21 @@ public class AdminCategoriesFragment extends Fragment {
 
         SwitchMaterial switchAvailable = dialogView.findViewById(R.id.switchAvailable);
 
-        // Store original image
-        selectedImageBase64 = food.getBase64Image();
+        // Reset selected image
+        selectedImageBase64 = null;
         selectedImageBitmap = null;
 
-        // Load current image and show/hide placeholder
-        updateImageInDialog(ivCurrentFoodImage, placeholderLayout, food.getBase64Image());
+        // Load current image
+        if (food.getBase64Image() != null && !food.getBase64Image().isEmpty()) {
+            Bitmap bmp = base64ToBitmap(food.getBase64Image());
+            if (bmp != null) {
+                ivCurrentFoodImage.setImageBitmap(bmp);
+            } else {
+                ivCurrentFoodImage.setImageResource(R.drawable.ic_placeholder);
+            }
+        } else {
+            ivCurrentFoodImage.setImageResource(R.drawable.ic_placeholder);
+        }
 
         // Set current values
         etName.setText(food.getName() != null ? food.getName() : "");
@@ -376,12 +384,8 @@ public class AdminCategoriesFragment extends Fragment {
 
         switchAvailable.setChecked(food.isAvailable());
 
-        // Setup image selection - Store references to current dialog views
+        // Setup image selection
         fabPickImage.setOnClickListener(v -> {
-            // Store references to current dialog views
-            currentDialogImageView = ivCurrentFoodImage;
-            currentDialogPlaceholderLayout = placeholderLayout;
-
             // Create options dialog for image source
             String[] options = {"Take Photo", "Choose from Gallery", "Cancel"};
             AlertDialog.Builder imageDialog = new AlertDialog.Builder(getContext());
@@ -408,221 +412,126 @@ public class AdminCategoriesFragment extends Fragment {
         // Setup smart input limitations
         setupSmartInputLimitationsForDialog(etName, etPrice, etPrepTime, etDescription);
 
-        // Set up the Update button
-        builder.setPositiveButton("Update", (dialog, which) -> {
-            if (validateAndUpdateFood(food, position, etName, etPrice, etDescription,
+        // Create the dialog
+        AlertDialog dialog = builder.create();
+
+        // Set up the Update button with custom click listener
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Update", (dialogInterface, which) -> {
+            // Do nothing here, we'll handle it below
+        });
+
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", (dialogInterface, which) -> {
+            dialog.dismiss();
+        });
+
+        // Show the dialog
+        dialog.show();
+
+        // Override the positive button click
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (validateAndUpdateFood(food, etName, etPrice, etDescription,
                     etPrepTime, spCategory, switchAvailable)) {
                 dialog.dismiss();
             }
         });
-
-        // Set up the Cancel button
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-        // Show the dialog
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    // Helper method to update image in dialog
-    private void updateImageInDialog(ImageView imageView, LinearLayout placeholderLayout, String base64Image) {
-        if (base64Image != null && !base64Image.isEmpty()) {
-            Bitmap bmp = base64ToBitmap(base64Image);
-            if (bmp != null) {
-                imageView.setImageBitmap(bmp);
-                placeholderLayout.setVisibility(View.GONE);
-            } else {
-                imageView.setImageResource(R.drawable.ic_placeholder);
-                placeholderLayout.setVisibility(View.VISIBLE);
-            }
-        } else {
-            imageView.setImageResource(R.drawable.ic_placeholder);
-            placeholderLayout.setVisibility(View.VISIBLE);
-        }
     }
 
     private void setupSmartInputLimitationsForDialog(EditText etName, EditText etPrice,
                                                      EditText etPrepTime, EditText etDescription) {
         // Food Name limit
-        setupTextLimiter(etName, NAME_LIMIT, "Food Name");
+        etName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (s.length() > NAME_LIMIT) {
+                    etName.setError("Max " + NAME_LIMIT + " characters");
+                    vibrate();
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         // Description limit
-        setupTextLimiter(etDescription, DESC_LIMIT, "Description");
+        etDescription.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (s.length() > DESC_LIMIT) {
+                    etDescription.setError("Max " + DESC_LIMIT + " characters");
+                    vibrate();
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         // Prep Time (1-999)
         etPrepTime.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        setupNumberLimiter(etPrepTime, PREP_TIME_MIN, PREP_TIME_MAX, "Prep Time");
+        etPrepTime.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (!s.toString().isEmpty()) {
+                    try {
+                        int value = Integer.parseInt(s.toString());
+                        if (value < PREP_TIME_MIN || value > PREP_TIME_MAX) {
+                            etPrepTime.setError("Must be " + PREP_TIME_MIN + "-" + PREP_TIME_MAX + " mins");
+                            vibrate();
+                        }
+                    } catch (NumberFormatException e) {
+                        etPrepTime.setError("Invalid number");
+                    }
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         // Price (1-10000, 2 decimals)
         etPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER |
                 android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        setupPriceLimiter(etPrice, PRICE_MIN, PRICE_MAX);
-    }
-
-    private void setupTextLimiter(EditText editText, int maxLength, String fieldName) {
-        editText.addTextChangedListener(new TextWatcher() {
-            private String lastValidText = "";
-
+        etPrice.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if (s != null) {
-                    lastValidText = s.toString();
-                }
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String currentText = s != null ? s.toString() : "";
-
-                if (currentText.length() > maxLength) {
-                    editText.removeTextChangedListener(this);
-                    editText.setText(lastValidText);
-                    editText.setSelection(lastValidText.length());
-                    editText.addTextChangedListener(this);
-                    showCharacterLimitError(editText, fieldName, maxLength);
-                } else {
-                    lastValidText = currentText;
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-    }
-
-    private void setupNumberLimiter(EditText editText, int min, int max, String fieldName) {
-        editText.addTextChangedListener(new TextWatcher() {
-            private String lastValidText = "";
-
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if (s != null) {
-                    lastValidText = s.toString();
-                }
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String currentText = s != null ? s.toString() : "";
-
-                if (currentText.isEmpty()) {
-                    lastValidText = "";
-                    return;
-                }
-
-                try {
-                    int value = Integer.parseInt(currentText);
-
-                    if (value > max) {
-                        editText.removeTextChangedListener(this);
-                        editText.setText(String.valueOf(max));
-                        editText.setSelection(String.valueOf(max).length());
-                        editText.addTextChangedListener(this);
-                        showError(editText, fieldName + " maximum is " + max);
-                        vibrate();
-                    } else if (value < min && !currentText.isEmpty()) {
-                        editText.removeTextChangedListener(this);
-                        editText.setText(String.valueOf(min));
-                        editText.setSelection(String.valueOf(min).length());
-                        editText.addTextChangedListener(this);
-                        showError(editText, fieldName + " minimum is " + min);
-                        vibrate();
-                    } else {
-                        lastValidText = currentText;
-                    }
-                } catch (NumberFormatException e) {
-                    editText.removeTextChangedListener(this);
-                    editText.setText(lastValidText);
-                    editText.setSelection(lastValidText.length());
-                    editText.addTextChangedListener(this);
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-    }
-
-    private void setupPriceLimiter(EditText editText, double min, double max) {
-        editText.addTextChangedListener(new TextWatcher() {
-            private String lastValidText = "";
-
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if (s != null) {
-                    lastValidText = s.toString();
-                }
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String currentText = s != null ? s.toString() : "";
-
-                // Prevent multiple decimals
-                int decimalCount = 0;
-                for (char c : currentText.toCharArray()) {
-                    if (c == '.') decimalCount++;
-                }
-                if (decimalCount > 1) {
-                    editText.removeTextChangedListener(this);
-                    editText.setText(lastValidText);
-                    editText.setSelection(lastValidText.length());
-                    editText.addTextChangedListener(this);
-                    return;
-                }
-
-                // Limit to 2 decimal places
-                if (currentText.contains(".")) {
-                    String[] parts = currentText.split("\\.");
-                    if (parts.length > 1 && parts[1].length() > 2) {
-                        editText.removeTextChangedListener(this);
-                        String formatted = parts[0] + "." + parts[1].substring(0, 2);
-                        editText.setText(formatted);
-                        editText.setSelection(formatted.length());
-                        editText.addTextChangedListener(this);
-                        return;
-                    }
-                }
-
-                // Validate range
-                if (!currentText.isEmpty() && !currentText.equals(".")) {
+                if (!s.toString().isEmpty() && !s.toString().equals(".")) {
                     try {
-                        double value = Double.parseDouble(currentText);
-                        if (value > max) {
-                            editText.removeTextChangedListener(this);
-                            editText.setText(String.valueOf(max));
-                            editText.setSelection(String.valueOf(max).length());
-                            editText.addTextChangedListener(this);
-                            showError(editText, "Price maximum is ₱" + max);
+                        double value = Double.parseDouble(s.toString());
+                        if (value < PRICE_MIN || value > PRICE_MAX) {
+                            etPrice.setError("Must be ₱" + PRICE_MIN + "-₱" + PRICE_MAX);
                             vibrate();
-                        } else if (value < min) {
-                            editText.removeTextChangedListener(this);
-                            editText.setText(String.valueOf(min));
-                            editText.setSelection(String.valueOf(min).length());
-                            editText.addTextChangedListener(this);
-                            showError(editText, "Price minimum is ₱" + min);
+                        }
+
+                        // Check decimal places
+                        String[] parts = s.toString().split("\\.");
+                        if (parts.length > 1 && parts[1].length() > 2) {
+                            etPrice.setError("Max 2 decimal places");
                             vibrate();
-                        } else {
-                            lastValidText = currentText;
                         }
                     } catch (NumberFormatException e) {
-                        editText.removeTextChangedListener(this);
-                        editText.setText(lastValidText);
-                        editText.setSelection(lastValidText.length());
-                        editText.addTextChangedListener(this);
+                        etPrice.setError("Invalid price");
                     }
                 }
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-            }
+            public void afterTextChanged(Editable s) {}
         });
     }
 
-    private boolean validateAndUpdateFood(ItemAdminCategory food, int position,
+    private boolean validateAndUpdateFood(ItemAdminCategory food,
                                           EditText etName, EditText etPrice, EditText etDescription,
                                           EditText etPrepTime, Spinner spCategory,
                                           SwitchMaterial switchAvailable) {
@@ -636,90 +545,129 @@ public class AdminCategoriesFragment extends Fragment {
         boolean available = switchAvailable.isChecked();
 
         // Validate
+        boolean isValid = true;
+
         if (name.isEmpty()) {
-            showError(etName, "Food name is required");
-            return false;
+            etName.setError("Food name is required");
+            etName.requestFocus();
+            vibrate();
+            isValid = false;
+        } else if (name.length() > NAME_LIMIT) {
+            etName.setError("Max " + NAME_LIMIT + " characters");
+            etName.requestFocus();
+            vibrate();
+            isValid = false;
         }
 
         if (priceStr.isEmpty()) {
-            showError(etPrice, "Price is required");
-            return false;
+            etPrice.setError("Price is required");
+            if (isValid) {
+                etPrice.requestFocus();
+                vibrate();
+            }
+            isValid = false;
+        } else {
+            try {
+                double price = Double.parseDouble(priceStr);
+                if (price < PRICE_MIN || price > PRICE_MAX) {
+                    etPrice.setError("Must be ₱" + PRICE_MIN + "-₱" + PRICE_MAX);
+                    if (isValid) {
+                        etPrice.requestFocus();
+                        vibrate();
+                    }
+                    isValid = false;
+                }
+            } catch (NumberFormatException e) {
+                etPrice.setError("Invalid price");
+                if (isValid) {
+                    etPrice.requestFocus();
+                    vibrate();
+                }
+                isValid = false;
+            }
         }
 
         if (prepTime.isEmpty()) {
-            showError(etPrepTime, "Prep time is required");
-            return false;
-        }
-
-        // Validate limits
-        if (name.length() > NAME_LIMIT) {
-            showError(etName, "Max " + NAME_LIMIT + " characters");
-            return false;
+            etPrepTime.setError("Prep time is required");
+            if (isValid) {
+                etPrepTime.requestFocus();
+                vibrate();
+            }
+            isValid = false;
+        } else {
+            try {
+                int prepTimeVal = Integer.parseInt(prepTime);
+                if (prepTimeVal < PREP_TIME_MIN || prepTimeVal > PREP_TIME_MAX) {
+                    etPrepTime.setError("Must be " + PREP_TIME_MIN + "-" + PREP_TIME_MAX + " mins");
+                    if (isValid) {
+                        etPrepTime.requestFocus();
+                        vibrate();
+                    }
+                    isValid = false;
+                }
+            } catch (NumberFormatException e) {
+                etPrepTime.setError("Invalid prep time");
+                if (isValid) {
+                    etPrepTime.requestFocus();
+                    vibrate();
+                }
+                isValid = false;
+            }
         }
 
         if (description.length() > DESC_LIMIT) {
-            showError(etDescription, "Max " + DESC_LIMIT + " characters");
-            return false;
-        }
-
-        double price;
-        try {
-            price = Double.parseDouble(priceStr);
-            if (price < PRICE_MIN || price > PRICE_MAX) {
-                showError(etPrice, "Price must be ₱" + PRICE_MIN + " - ₱" + PRICE_MAX);
-                return false;
+            etDescription.setError("Max " + DESC_LIMIT + " characters");
+            if (isValid) {
+                etDescription.requestFocus();
+                vibrate();
             }
-        } catch (NumberFormatException e) {
-            showError(etPrice, "Invalid price");
+            isValid = false;
+        }
+
+        if (!isValid) {
             return false;
         }
 
-        try {
-            int prepTimeVal = Integer.parseInt(prepTime);
-            if (prepTimeVal < PREP_TIME_MIN || prepTimeVal > PREP_TIME_MAX) {
-                showError(etPrepTime, "Prep time must be " + PREP_TIME_MIN + "-" + PREP_TIME_MAX + " mins");
-                return false;
-            }
-        } catch (NumberFormatException e) {
-            showError(etPrepTime, "Invalid prep time");
-            return false;
-        }
-
-        // Update food object
-        food.setName(name);
-        food.setPrice(price);
-        food.setDescription(description);
-        food.setPrepTime(prepTime);
-        food.setCategory(category);
-        food.setAvailable(available);
+        // Prepare update data
+        Map<String, Object> updateData = new HashMap<>();
+        updateData.put("name", name);
+        updateData.put("price", Double.parseDouble(priceStr));
+        updateData.put("description", description);
+        updateData.put("prepTime", prepTime);
+        updateData.put("category", category);
+        updateData.put("available", available);
 
         // Update image if new one was selected
         if (selectedImageBase64 != null) {
-            food.setBase64Image(selectedImageBase64);
+            updateData.put("base64Image", selectedImageBase64);
         }
 
         // Update in Firebase
-        foodsRef.child(food.getKey()).setValue(food)
+        foodsRef.child(food.getKey()).updateChildren(updateData)
                 .addOnSuccessListener(aVoid -> {
                     showSuccessToast(food.getName() + " updated");
-                    foodAdapter.notifyItemChanged(position);
+
+                    // Update local data
+                    food.setName(name);
+                    food.setPrice(Double.parseDouble(priceStr));
+                    food.setDescription(description);
+                    food.setPrepTime(prepTime);
+                    food.setCategory(category);
+                    food.setAvailable(available);
+                    if (selectedImageBase64 != null) {
+                        food.setBase64Image(selectedImageBase64);
+                    }
+
+                    // Update RecyclerView
+                    if (currentUpdatePosition >= 0 && currentUpdatePosition < filteredList.size()) {
+                        foodAdapter.notifyItemChanged(currentUpdatePosition);
+                    }
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Failed to update: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
 
         return true;
-    }
-
-    private void showCharacterLimitError(EditText field, String fieldName, int limit) {
-        showError(field, fieldName + " cannot exceed " + limit + " characters");
-        vibrate();
-    }
-
-    private void showError(EditText field, String message) {
-        field.setError(message);
-        field.requestFocus();
-        vibrate();
     }
 
     private void showSuccessToast(String message) {

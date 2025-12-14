@@ -18,13 +18,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -36,10 +34,9 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-
 import org.json.JSONObject;
-
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -57,77 +54,177 @@ public class RegisterActivity extends AppCompatActivity {
     private static final String TAG = "RegisterActivity";
     private static final String OSM_NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
 
-    EditText name, email, phone, address, password, confirmPassword;
-    Button btnRegister;
-    TextView loginLink;
-    FirebaseAuth auth;
-    DatabaseReference usersRef;
-    FusedLocationProviderClient fusedLocationClient;
+    // UI Components
+    private EditText etName, etEmail, etPhone, etAddress, etPassword, etConfirmPassword;
+    private Button btnRegister;
+    private TextView loginLink;
 
+    // Firebase
+    private FirebaseAuth auth;
+    private DatabaseReference usersRef;
+
+    // Location
+    private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private ExecutorService executorService;
     private boolean isGettingLocation = false;
-    private boolean locationConfirmed = false;
-
-    // Variables to store location data
     private double currentLatitude = 0;
     private double currentLongitude = 0;
+
+    // Wizard State
+    private int currentStep = 1;
+    private final int TOTAL_STEPS = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
+        // Initialize Firebase
         auth = FirebaseAuth.getInstance();
         usersRef = FirebaseDatabase.getInstance().getReference("users");
+
+        // Initialize location services
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         executorService = Executors.newSingleThreadExecutor();
 
-        name = findViewById(R.id.etName);
-        email = findViewById(R.id.etEmail);
-        phone = findViewById(R.id.etPhone);
-        address = findViewById(R.id.etAddress);
-        password = findViewById(R.id.etPassword);
-        confirmPassword = findViewById(R.id.etConfirmPassword);
-        btnRegister = findViewById(R.id.btnRegister);
-        loginLink = findViewById(R.id.loginLink);
+        // Initialize UI
+        initializeViews();
 
-        btnRegister.setOnClickListener(v -> registerUser());
-        loginLink.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, LoginActivity.class)));
+        // Setup wizard for Step 1
+        setupStep1();
 
-        address.setOnClickListener(v -> {
-            if (!locationConfirmed) {
-                new AlertDialog.Builder(RegisterActivity.this)
-                        .setTitle("Use Current Location?")
-                        .setMessage("Do you want to auto-fill your address using your current location?")
-                        .setPositiveButton("Yes", (dialog, which) -> {
-                            locationConfirmed = true;
-                            if (isLocationEnabled()) {
-                                checkLocationPermissions();
-                            } else {
-                                showEnableLocationDialog();
-                            }
-                        })
-                        .setNegativeButton("No", (dialog, which) -> {
-                            locationConfirmed = true;
-                            address.setFocusableInTouchMode(true);
-                            address.requestFocus();
-                        })
-                        .show();
-            } else {
-                address.setFocusableInTouchMode(true);
-                address.requestFocus();
-            }
-        });
+        // Setup button listeners
+        setupButtonListeners();
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
+    private void initializeViews() {
+        etName = findViewById(R.id.etName);
+        etEmail = findViewById(R.id.etEmail);
+        etPhone = findViewById(R.id.etPhone);
+        etAddress = findViewById(R.id.etAddress);
+        etPassword = findViewById(R.id.etPassword);
+        etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        btnRegister = findViewById(R.id.btnRegister);
+        loginLink = findViewById(R.id.loginLink);
+    }
+
+    private void setupStep1() {
+        // Show only Step 1 fields
+        etName.setVisibility(android.view.View.VISIBLE);
+        etEmail.setVisibility(android.view.View.VISIBLE);
+        etPhone.setVisibility(android.view.View.VISIBLE);
+
+        // Hide Step 2 & 3 fields
+        etAddress.setVisibility(android.view.View.GONE);
+        etPassword.setVisibility(android.view.View.GONE);
+        etConfirmPassword.setVisibility(android.view.View.GONE);
+
+        // Update UI
+        updateStepHeader("Step 1 of 3: Personal Information");
+        btnRegister.setText("Next");
+        loginLink.setVisibility(android.view.View.GONE);
+    }
+
+    private void setupStep2() {
+        // Hide Step 1 fields
+        etName.setVisibility(android.view.View.GONE);
+        etEmail.setVisibility(android.view.View.GONE);
+        etPhone.setVisibility(android.view.View.GONE);
+
+        // Show Step 2 field
+        etAddress.setVisibility(android.view.View.VISIBLE);
+
+        // Hide Step 3 fields
+        etPassword.setVisibility(android.view.View.GONE);
+        etConfirmPassword.setVisibility(android.view.View.GONE);
+
+        // Update UI
+        updateStepHeader("Step 2 of 3: Location");
+        btnRegister.setText("Next");
+        loginLink.setVisibility(android.view.View.GONE);
+
+        // Setup address click listener
+        setupAddressClickListener();
+    }
+
+    private void setupStep3() {
+        // Hide Step 1 & 2 fields
+        etName.setVisibility(android.view.View.GONE);
+        etEmail.setVisibility(android.view.View.GONE);
+        etPhone.setVisibility(android.view.View.GONE);
+        etAddress.setVisibility(android.view.View.GONE);
+
+        // Show Step 3 fields
+        etPassword.setVisibility(android.view.View.VISIBLE);
+        etConfirmPassword.setVisibility(android.view.View.VISIBLE);
+
+        // Update UI
+        updateStepHeader("Step 3 of 3: Security");
+        btnRegister.setText("Create Account");
+        loginLink.setVisibility(android.view.View.VISIBLE);
+    }
+
+    private void updateStepHeader(String text) {
+        TextView tvStepHeader = findViewById(R.id.tvStepHeader);
+        if (tvStepHeader != null) {
+            tvStepHeader.setText(text);
         }
-        stopLocationUpdates();
+    }
+
+    private void setupAddressClickListener() {
+        etAddress.setOnClickListener(v -> {
+            // Show HORIZONTAL BUTTONS dialog
+            showAddressOptionsDialog();
+        });
+
+        etAddress.setFocusable(false);
+        etAddress.setClickable(true);
+    }
+
+    // ==================== HORIZONTAL BUTTONS DIALOG ====================
+
+    private void showAddressOptionsDialog() {
+        // Create custom dialog with horizontal buttons
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Get Your Address");
+        builder.setMessage("Choose how to get your address:");
+
+        // Set custom view with horizontal buttons
+        builder.setPositiveButton("Use Current Location", null); // We'll override later
+        builder.setNegativeButton("Enter Manually", null); // We'll override later
+
+        AlertDialog dialog = builder.create();
+
+        // Show dialog first
+        dialog.show();
+
+        // Get the buttons
+        Button btnCurrentLocation = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button btnEnterManually = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+
+        // Customize button appearance for horizontal alignment
+        android.view.ViewGroup.LayoutParams params = btnCurrentLocation.getLayoutParams();
+        params.width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+        btnCurrentLocation.setLayoutParams(params);
+        btnEnterManually.setLayoutParams(params);
+
+        // Set click listeners AFTER dialog is shown
+        btnCurrentLocation.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (isLocationEnabled()) {
+                checkLocationPermissions();
+            } else {
+                showEnableLocationDialog();
+            }
+        });
+
+        btnEnterManually.setOnClickListener(v -> {
+            dialog.dismiss();
+            etAddress.setFocusable(true);
+            etAddress.setFocusableInTouchMode(true);
+            etAddress.requestFocus();
+        });
     }
 
     private boolean isLocationEnabled() {
@@ -146,12 +243,8 @@ public class RegisterActivity extends AppCompatActivity {
                     startActivityForResult(intent, LOCATION_SETTINGS_REQUEST);
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> {
-                    address.setFocusableInTouchMode(true);
-                    address.requestFocus();
-                })
-                .setOnCancelListener(dialog -> {
-                    address.setFocusableInTouchMode(true);
-                    address.requestFocus();
+                    etAddress.setFocusable(true);
+                    etAddress.requestFocus();
                 })
                 .show();
     }
@@ -180,9 +273,9 @@ public class RegisterActivity extends AppCompatActivity {
                 if (isLocationEnabled()) {
                     checkLocationPermissions();
                 } else {
-                    Toast.makeText(this, "❌ Location Services still disabled", Toast.LENGTH_SHORT).show();
-                    address.setFocusableInTouchMode(true);
-                    address.requestFocus();
+                    Toast.makeText(this, "Location Services still disabled", Toast.LENGTH_SHORT).show();
+                    etAddress.setFocusable(true);
+                    etAddress.requestFocus();
                 }
             }, 1000);
         }
@@ -202,18 +295,19 @@ public class RegisterActivity extends AppCompatActivity {
                 if (fineLocationGranted || coarseLocationGranted) {
                     fetchCurrentLocation();
                 } else {
-                    Toast.makeText(this, "❌ Location permission denied", Toast.LENGTH_SHORT).show();
-                    address.setFocusableInTouchMode(true);
-                    address.requestFocus();
+                    Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+                    etAddress.setFocusable(true);
+                    etAddress.requestFocus();
                 }
             }
         }
     }
 
-    // ==================== LOCATION FETCHING ====================
+    // ==================== STRICT PH ADDRESS FETCHING ====================
+
     private void fetchCurrentLocation() {
         if (!isLocationEnabled()) {
-            Toast.makeText(this, "❌ Please enable Location Services first", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please enable Location Services first", Toast.LENGTH_SHORT).show();
             showEnableLocationDialog();
             return;
         }
@@ -231,7 +325,7 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         isGettingLocation = true;
-        Toast.makeText(this, "📍 Getting your location...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Getting your location...", Toast.LENGTH_SHORT).show();
 
         fusedLocationClient.getLastLocation()
                 .addOnCompleteListener(this, new OnCompleteListener<Location>() {
@@ -241,10 +335,10 @@ public class RegisterActivity extends AppCompatActivity {
                             Location location = task.getResult();
                             long locationAge = System.currentTimeMillis() - location.getTime();
 
-                            if (locationAge < 2 * 60 * 1000) {
+                            if (locationAge < 2 * 60 * 1000) { // Less than 2 minutes old
                                 currentLatitude = location.getLatitude();
                                 currentLongitude = location.getLongitude();
-                                startSequentialValidation();
+                                convertToStrictPHAddress();
                                 isGettingLocation = false;
                                 return;
                             }
@@ -274,7 +368,7 @@ public class RegisterActivity extends AppCompatActivity {
                     if (location != null) {
                         currentLatitude = location.getLatitude();
                         currentLongitude = location.getLongitude();
-                        startSequentialValidation();
+                        convertToStrictPHAddress();
                         stopLocationUpdates();
                         isGettingLocation = false;
                         return;
@@ -294,389 +388,66 @@ public class RegisterActivity extends AppCompatActivity {
         }, 15000);
     }
 
-    private void stopLocationUpdates() {
-        if (locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-            locationCallback = null;
-        }
-    }
+    // ==================== DUAL ADDRESS FETCHING (Geocoder + OSM) ====================
 
-    // ==================== SEQUENTIAL VALIDATION ====================
-    private void startSequentialValidation() {
-        runOnUiThread(() -> {
-            Toast.makeText(RegisterActivity.this, "📍 Validating street address...", Toast.LENGTH_SHORT).show();
-        });
-
+    private void convertToStrictPHAddress() {
         executorService.execute(() -> {
-            // STEP 1: Get street address
-            String street = getStreetAddress();
+            try {
+                // FIRST: Try Google Geocoder
+                Geocoder geocoder = new Geocoder(RegisterActivity.this, Locale.getDefault());
+                List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 3);
 
-            if (street.isEmpty()) {
                 runOnUiThread(() -> {
-                    showRetryDialog("Street", "Could not detect street address.");
-                });
-                return;
-            }
+                    if (addresses != null && !addresses.isEmpty()) {
+                        String strictAddress = "";
 
-            final String finalStreet = street;
-
-            runOnUiThread(() -> {
-                // Ask user to confirm street
-                new AlertDialog.Builder(RegisterActivity.this)
-                        .setTitle("Confirm Street Address")
-                        .setMessage("Detected street: " + finalStreet + "\n\nIs this correct?")
-                        .setPositiveButton("Yes", (dialog, which) -> {
-                            // STEP 2: Get barangay
-                            getBarangayAddress(finalStreet);
-                        })
-                        .setNegativeButton("No, Try Again", (dialog, which) -> {
-                            showRetryDialog("Street", "Please try getting location again.");
-                        })
-                        .setCancelable(false)
-                        .show();
-            });
-        });
-    }
-
-    private void getBarangayAddress(String confirmedStreet) {
-        runOnUiThread(() -> {
-            Toast.makeText(RegisterActivity.this, "📍 Validating barangay...", Toast.LENGTH_SHORT).show();
-        });
-
-        executorService.execute(() -> {
-            String barangay = getBarangayName();
-
-            if (barangay.isEmpty()) {
-                runOnUiThread(() -> {
-                    showRetryDialog("Barangay", "Could not detect barangay.");
-                });
-                return;
-            }
-
-            final String finalBarangay = barangay;
-
-            runOnUiThread(() -> {
-                new AlertDialog.Builder(RegisterActivity.this)
-                        .setTitle("Confirm Barangay")
-                        .setMessage("Detected barangay: " + finalBarangay + "\n\nIs this correct?")
-                        .setPositiveButton("Yes", (dialog, which) -> {
-                            // STEP 3: Get city
-                            getCityAddress(confirmedStreet, finalBarangay);
-                        })
-                        .setNegativeButton("No, Try Again", (dialog, which) -> {
-                            showRetryDialog("Barangay", "Please try getting location again.");
-                        })
-                        .setCancelable(false)
-                        .show();
-            });
-        });
-    }
-
-    private void getCityAddress(String street, String barangay) {
-        runOnUiThread(() -> {
-            Toast.makeText(RegisterActivity.this, "📍 Validating city/municipality...", Toast.LENGTH_SHORT).show();
-        });
-
-        executorService.execute(() -> {
-            String city = getCityName();
-
-            if (city.isEmpty()) {
-                runOnUiThread(() -> {
-                    showRetryDialog("City/Municipality", "Could not detect city/municipality.");
-                });
-                return;
-            }
-
-            final String finalCity = city;
-
-            runOnUiThread(() -> {
-                new AlertDialog.Builder(RegisterActivity.this)
-                        .setTitle("Confirm City/Municipality")
-                        .setMessage("Detected city/municipality: " + finalCity + "\n\nIs this correct?")
-                        .setPositiveButton("Yes", (dialog, which) -> {
-                            // STEP 4: Get province
-                            getProvinceAddress(street, barangay, finalCity);
-                        })
-                        .setNegativeButton("No, Try Again", (dialog, which) -> {
-                            showRetryDialog("City/Municipality", "Please try getting location again.");
-                        })
-                        .setCancelable(false)
-                        .show();
-            });
-        });
-    }
-
-    private void getProvinceAddress(String street, String barangay, String city) {
-        runOnUiThread(() -> {
-            Toast.makeText(RegisterActivity.this, "📍 Validating province...", Toast.LENGTH_SHORT).show();
-        });
-
-        executorService.execute(() -> {
-            String province = getProvinceName();
-
-            if (province.isEmpty() || isRegionName(province)) {
-                runOnUiThread(() -> {
-                    showRetryDialog("Province", "Could not detect province.");
-                });
-                return;
-            }
-
-            final String finalProvince = province;
-
-            runOnUiThread(() -> {
-                new AlertDialog.Builder(RegisterActivity.this)
-                        .setTitle("Confirm Province")
-                        .setMessage("Detected province: " + finalProvince + "\n\nIs this correct?")
-                        .setPositiveButton("Yes", (dialog, which) -> {
-                            // FINAL: Format and display address
-                            String finalAddress = formatFinalAddress(street, barangay, city, finalProvince);
-                            address.setText(finalAddress);
-                            Toast.makeText(RegisterActivity.this, "✅ Address validated successfully!", Toast.LENGTH_SHORT).show();
-                        })
-                        .setNegativeButton("No, Try Again", (dialog, which) -> {
-                            showRetryDialog("Province", "Please try getting location again.");
-                        })
-                        .setCancelable(false)
-                        .show();
-            });
-        });
-    }
-
-    // ==================== ADDRESS COMPONENT EXTRACTION ====================
-    private String getStreetAddress() {
-        // Try Geocoder first
-        String street = getStreetFromGeocoder();
-        if (!street.isEmpty()) {
-            return formatStreet(street);
-        }
-
-        // Fallback to OSM
-        street = getStreetFromOSM();
-        return formatStreet(street);
-    }
-
-    private String getBarangayName() {
-        // Try Geocoder first
-        String barangay = getBarangayFromGeocoder();
-        if (!barangay.isEmpty()) {
-            return formatBarangay(barangay);
-        }
-
-        // Fallback to OSM
-        barangay = getBarangayFromOSM();
-        return formatBarangay(barangay);
-    }
-
-    private String getCityName() {
-        // Try Geocoder first
-        String city = getCityFromGeocoder();
-        if (!city.isEmpty()) {
-            return formatCity(city);
-        }
-
-        // Fallback to OSM
-        city = getCityFromOSM();
-        return formatCity(city);
-    }
-
-    private String getProvinceName() {
-        // Try Geocoder first
-        String province = getProvinceFromGeocoder();
-        if (!province.isEmpty() && !isRegionName(province)) {
-            return formatProvince(province);
-        }
-
-        // Fallback to OSM
-        province = getProvinceFromOSM();
-        if (!province.isEmpty() && !isRegionName(province)) {
-            return formatProvince(province);
-        }
-
-        return "";
-    }
-
-    // ==================== GEOCODER METHODS ====================
-    private String getStreetFromGeocoder() {
-        try {
-            if (!Geocoder.isPresent()) return "";
-
-            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 1);
-
-            if (addresses != null && !addresses.isEmpty()) {
-                Address addr = addresses.get(0);
-                return addr.getThoroughfare() != null ? addr.getThoroughfare() : "";
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Geocoder Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    private String getBarangayFromGeocoder() {
-        try {
-            if (!Geocoder.isPresent()) return "";
-
-            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 1);
-
-            if (addresses != null && !addresses.isEmpty()) {
-                Address addr = addresses.get(0);
-
-                // Try sub-locality first
-                if (addr.getSubLocality() != null) {
-                    String subLocality = addr.getSubLocality();
-                    if (isBarangayName(subLocality)) {
-                        return subLocality;
-                    }
-                }
-
-                // Try feature name
-                if (addr.getFeatureName() != null) {
-                    String featureName = addr.getFeatureName();
-                    if (isBarangayName(featureName) &&
-                            !featureName.equalsIgnoreCase(addr.getLocality())) {
-                        return featureName;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Geocoder Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    private String getCityFromGeocoder() {
-        try {
-            if (!Geocoder.isPresent()) return "";
-
-            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 1);
-
-            if (addresses != null && !addresses.isEmpty()) {
-                Address addr = addresses.get(0);
-                if (addr.getLocality() != null) {
-                    return addr.getLocality();
-                } else if (addr.getSubAdminArea() != null) {
-                    return addr.getSubAdminArea();
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Geocoder Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    private String getProvinceFromGeocoder() {
-        try {
-            if (!Geocoder.isPresent()) return "";
-
-            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 1);
-
-            if (addresses != null && !addresses.isEmpty()) {
-                Address addr = addresses.get(0);
-                if (addr.getAdminArea() != null) {
-                    return addr.getAdminArea();
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Geocoder Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    // ==================== OSM METHODS ====================
-    private String getStreetFromOSM() {
-        try {
-            JSONObject json = getOSMData();
-            if (json != null) {
-                JSONObject addressObj = json.optJSONObject("address");
-                if (addressObj != null) {
-                    String street = addressObj.optString("road", "");
-                    if (street.isEmpty()) {
-                        street = addressObj.optString("pedestrian", "");
-                    }
-                    if (street.isEmpty()) {
-                        street = addressObj.optString("footway", "");
-                    }
-                    return street;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "OSM Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    private String getBarangayFromOSM() {
-        try {
-            JSONObject json = getOSMData();
-            if (json != null) {
-                JSONObject addressObj = json.optJSONObject("address");
-                if (addressObj != null) {
-                    if (addressObj.has("village")) {
-                        return addressObj.optString("village", "");
-                    } else if (addressObj.has("suburb")) {
-                        String suburb = addressObj.optString("suburb", "");
-                        if (isBarangayName(suburb)) {
-                            return suburb;
+                        for (Address address : addresses) {
+                            strictAddress = extractStrictPHAddress(address);
+                            if (!strictAddress.isEmpty()) {
+                                break;
+                            }
                         }
-                    } else if (addressObj.has("hamlet")) {
-                        String hamlet = addressObj.optString("hamlet", "");
-                        if (isBarangayName(hamlet)) {
-                            return hamlet;
+
+                        if (!strictAddress.isEmpty()) {
+                            etAddress.setText(strictAddress);
+                            Toast.makeText(RegisterActivity.this, "Complete address detected", Toast.LENGTH_SHORT).show();
+                            return; // Success, exit
                         }
                     }
-                }
+
+                    // SECOND: If Geocoder fails, try OSM
+                    Log.d(TAG, "Geocoder failed, trying OSM...");
+                    tryOSMAddressFallback();
+                });
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    Log.e(TAG, "Geocoder error: " + e.getMessage());
+                    // Try OSM as fallback
+                    tryOSMAddressFallback();
+                });
             }
-        } catch (Exception e) {
-            Log.e(TAG, "OSM Error: " + e.getMessage());
-        }
-        return "";
+        });
     }
 
-    private String getCityFromOSM() {
-        try {
-            JSONObject json = getOSMData();
-            if (json != null) {
-                JSONObject addressObj = json.optJSONObject("address");
-                if (addressObj != null) {
-                    if (addressObj.has("city")) {
-                        return addressObj.optString("city", "");
-                    } else if (addressObj.has("town")) {
-                        return addressObj.optString("town", "");
-                    } else if (addressObj.has("municipality")) {
-                        return addressObj.optString("municipality", "");
-                    }
+    // ==================== OSM FALLBACK ====================
+
+    private void tryOSMAddressFallback() {
+        executorService.execute(() -> {
+            String osmAddress = getAddressFromOSM();
+
+            runOnUiThread(() -> {
+                if (!osmAddress.isEmpty()) {
+                    etAddress.setText(osmAddress);
+                    Toast.makeText(RegisterActivity.this, "Address detected via OSM", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Both Geocoder and OSM failed
+                    showLocationError();
                 }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "OSM Error: " + e.getMessage());
-        }
-        return "";
+            });
+        });
     }
 
-    private String getProvinceFromOSM() {
-        try {
-            JSONObject json = getOSMData();
-            if (json != null) {
-                JSONObject addressObj = json.optJSONObject("address");
-                if (addressObj != null) {
-                    if (addressObj.has("state")) {
-                        return addressObj.optString("state", "");
-                    } else if (addressObj.has("county")) {
-                        return addressObj.optString("county", "");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "OSM Error: " + e.getMessage());
-        }
-        return "";
-    }
-
-    private JSONObject getOSMData() {
+    private String getAddressFromOSM() {
         try {
             String urlString = String.format(Locale.US,
                     "%s?format=json&lat=%.6f&lon=%.6f&zoom=18" +
@@ -704,67 +475,243 @@ public class RegisterActivity extends AppCompatActivity {
                 inputStream.close();
                 conn.disconnect();
 
-                return new JSONObject(response.toString());
+                JSONObject json = new JSONObject(response.toString());
+                return extractOSMAddress(json);
             }
             conn.disconnect();
         } catch (Exception e) {
             Log.e(TAG, "OSM Error: " + e.getMessage());
         }
-        return null;
+        return "";
     }
 
-    // ==================== FORMATTING FUNCTIONS ====================
-    private String formatStreet(String street) {
-        if (street == null || street.trim().isEmpty()) {
-            return "";
+    // ==================== ADDRESS EXTRACTION METHODS ====================
+
+    /**
+     * EXTRACT STRICT PH ADDRESS - Must have ALL 4 parts:
+     * 1. Street
+     * 2. Barangay
+     * 3. City/Municipality
+     * 4. Province (not Region)
+     */
+    private String extractStrictPHAddress(Address address) {
+        String street = extractStreet(address);
+        String barangay = extractBarangay(address);
+        String city = extractCity(address);
+        String province = extractProvince(address);
+
+        Log.d(TAG, "Geocoder Extracted - Street: " + street +
+                ", Barangay: " + barangay +
+                ", City: " + city +
+                ", Province: " + province);
+
+        // ALL 4 PARTS REQUIRED
+        if (!street.isEmpty() && !barangay.isEmpty() && !city.isEmpty() && !province.isEmpty()) {
+            return street + ", " + barangay + ", " + city + ", " + province;
         }
 
-        street = street.trim();
-        String lowerStreet = street.toLowerCase();
+        return "";
+    }
 
-        // Add proper suffix if missing
-        if (!lowerStreet.contains("street") &&
-                !lowerStreet.contains("st.") &&
-                !lowerStreet.contains("st ") &&
-                !lowerStreet.contains("avenue") &&
-                !lowerStreet.contains("ave") &&
-                !lowerStreet.contains("road") &&
-                !lowerStreet.contains("rd") &&
-                !lowerStreet.contains("boulevard") &&
-                !lowerStreet.contains("blvd")) {
+    private String extractOSMAddress(JSONObject json) {
+        try {
+            JSONObject addressObj = json.getJSONObject("address");
+
+            // 1. STREET
+            String street = "";
+            String[] streetFields = {"road", "pedestrian", "footway", "residential"};
+            for (String field : streetFields) {
+                if (addressObj.has(field)) {
+                    street = addressObj.getString(field);
+                    if (!street.isEmpty()) {
+                        street = formatStreet(street);
+                        break;
+                    }
+                }
+            }
+
+            // 2. BARANGAY
+            String barangay = "";
+            String[] barangayFields = {"village", "suburb", "hamlet", "neighbourhood"};
+            for (String field : barangayFields) {
+                if (addressObj.has(field)) {
+                    barangay = addressObj.getString(field);
+                    if (!barangay.isEmpty() && isBarangayName(barangay)) {
+                        barangay = formatBarangay(barangay);
+                        break;
+                    }
+                }
+            }
+
+            // 3. CITY/MUNICIPALITY
+            String city = "";
+            String[] cityFields = {"city", "town", "municipality"};
+            for (String field : cityFields) {
+                if (addressObj.has(field)) {
+                    city = addressObj.getString(field);
+                    if (!city.isEmpty()) {
+                        city = formatCity(city);
+                        break;
+                    }
+                }
+            }
+
+            // 4. PROVINCE
+            String province = "";
+            String[] provinceFields = {"state", "county"};
+            for (String field : provinceFields) {
+                if (addressObj.has(field)) {
+                    province = addressObj.getString(field);
+                    if (!province.isEmpty() && !isRegionName(province)) {
+                        province = formatProvince(province);
+                        break;
+                    }
+                }
+            }
+
+            Log.d(TAG, "OSM Extracted - Street: " + street +
+                    ", Barangay: " + barangay +
+                    ", City: " + city +
+                    ", Province: " + province);
+
+            // ALL 4 PARTS REQUIRED
+            if (!street.isEmpty() && !barangay.isEmpty() && !city.isEmpty() && !province.isEmpty()) {
+                return street + ", " + barangay + ", " + city + ", " + province;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "OSM Parsing Error: " + e.getMessage());
+        }
+        return "";
+    }
+
+    // ==================== ADDRESS COMPONENT EXTRACTION ====================
+
+    private String extractStreet(Address address) {
+        String street = address.getThoroughfare();
+        if (street != null && !street.trim().isEmpty() && isStreetName(street)) {
+            return formatStreet(street.trim());
+        }
+        return "";
+    }
+
+    private boolean isStreetName(String text) {
+        if (text == null) return false;
+        String lower = text.toLowerCase();
+        return lower.contains("street") || lower.contains("st.") || lower.contains("st ") ||
+                lower.contains("avenue") || lower.contains("ave") || lower.contains("ave.") ||
+                lower.contains("road") || lower.contains("rd") || lower.contains("rd.") ||
+                lower.contains("boulevard") || lower.contains("blvd") ||
+                lower.contains("drive") || lower.contains("dr") ||
+                lower.contains("highway") || lower.contains("hwy") ||
+                lower.contains("lane") || lower.contains("ln");
+    }
+
+    private String formatStreet(String street) {
+        if (street == null || street.trim().isEmpty()) return "";
+
+        street = street.trim();
+        String lower = street.toLowerCase();
+
+        if (!hasStreetSuffix(lower)) {
             street = street + " St.";
         }
 
         return capitalizeWords(street);
     }
 
-    private String formatBarangay(String barangay) {
-        if (barangay == null || barangay.trim().isEmpty()) {
-            return "";
+    private boolean hasStreetSuffix(String street) {
+        return street.contains("street") || street.contains("st.") || street.contains("st ") ||
+                street.contains("avenue") || street.contains("ave") || street.contains("ave.") ||
+                street.contains("road") || street.contains("rd") || street.contains("rd.") ||
+                street.contains("boulevard") || street.contains("blvd") ||
+                street.contains("drive") || street.contains("dr") ||
+                street.contains("highway") || street.contains("hwy") ||
+                street.contains("lane") || street.contains("ln");
+    }
+
+    private String extractBarangay(Address address) {
+        String barangay = address.getSubLocality();
+        if (barangay != null && !barangay.trim().isEmpty() && isBarangayName(barangay)) {
+            return formatBarangay(barangay.trim());
         }
+        return "";
+    }
+
+    private boolean isBarangayName(String text) {
+        if (text == null) return false;
+        String lower = text.toLowerCase();
+        return lower.contains("barangay") || lower.contains("brgy") || lower.contains("bgy") ||
+                lower.contains("village") || lower.contains("vil.") ||
+                lower.contains("poblacion") || lower.contains("pob.");
+    }
+
+    private String formatBarangay(String barangay) {
+        if (barangay == null || barangay.trim().isEmpty()) return "";
 
         barangay = barangay.trim();
-        String lowerBarangay = barangay.toLowerCase();
+        String lower = barangay.toLowerCase();
 
-        // Add "Barangay" prefix if missing
-        if (!lowerBarangay.startsWith("barangay ") &&
-                !lowerBarangay.startsWith("brgy ") &&
-                !lowerBarangay.startsWith("bgy ")) {
+        if (!lower.startsWith("barangay ") &&
+                !lower.startsWith("brgy ") &&
+                !lower.startsWith("bgy ")) {
             barangay = "Barangay " + barangay;
         }
 
         return capitalizeWords(barangay);
     }
 
-    private String formatCity(String city) {
+    private String extractCity(Address address) {
+        String city = address.getLocality();
         if (city == null || city.trim().isEmpty()) {
-            return "";
+            city = address.getSubAdminArea();
         }
 
-        city = city.trim();
+        if (city != null && !city.trim().isEmpty() && !isRegionName(city)) {
+            city = city.trim()
+                    .replace("City of ", "")
+                    .replace("Municipality of ", "")
+                    .replace("City ", "")
+                    .replace("Municipality ", "")
+                    .trim();
+            return capitalizeWords(city);
+        }
+        return "";
+    }
 
-        // Remove unnecessary prefixes
-        city = city.replace("City of ", "")
+    private String extractProvince(Address address) {
+        String province = address.getAdminArea();
+        if (province != null && !province.trim().isEmpty()) {
+            province = province.trim()
+                    .replace("Province of ", "")
+                    .replace("Province ", "")
+                    .trim();
+
+            if (!isRegionName(province) && isProvinceName(province)) {
+                return capitalizeWords(province);
+            }
+        }
+        return "";
+    }
+
+    private String formatProvince(String province) {
+        if (province == null || province.trim().isEmpty()) return "";
+
+        province = province.trim()
+                .replace("Province of ", "")
+                .replace("Province ", "")
+                .trim();
+
+        return capitalizeWords(province);
+    }
+
+    /**
+     * Format city name
+     */
+    private String formatCity(String city) {
+        if (city == null || city.trim().isEmpty()) return "";
+
+        city = city.trim()
+                .replace("City of ", "")
                 .replace("Municipality of ", "")
                 .replace("City ", "")
                 .replace("Municipality ", "")
@@ -773,45 +720,42 @@ public class RegisterActivity extends AppCompatActivity {
         return capitalizeWords(city);
     }
 
-    private String formatProvince(String province) {
-        if (province == null || province.trim().isEmpty()) {
-            return "";
-        }
-
-        province = province.trim();
-
-        // Remove unnecessary prefixes
-        province = province.replace("Province of ", "")
-                .replace("Province ", "")
-                .trim();
-
-        return capitalizeWords(province);
+    private boolean isRegionName(String area) {
+        if (area == null) return false;
+        String lower = area.toLowerCase();
+        return lower.contains("region") ||
+                lower.equals("ncr") || lower.equals("national capital region") ||
+                lower.contains("calabarzon") || lower.contains("car") ||
+                lower.contains("bangsamoro") || lower.contains("metro manila");
     }
 
-    private String formatFinalAddress(String street, String barangay, String city, String province) {
-        // Strict format: [street], [barangay], [city], [province]
-        StringBuilder addressBuilder = new StringBuilder();
+    private boolean isProvinceName(String area) {
+        if (area == null) return false;
+        String lower = area.toLowerCase();
 
-        if (!street.isEmpty()) {
-            addressBuilder.append(street);
+        // Common PH provinces
+        String[] phProvinces = {
+                "laguna", "cavite", "batangas", "rizal", "quezon", "bulacan",
+                "pampanga", "tarlac", "nueva ecija", "bataan", "zambales",
+                "pangasinan", "la union", "ilocos sur", "ilocos norte",
+                "cebu", "bohol", "leyte", "samar", "negros occidental",
+                "negros oriental", "iloilo", "aklan", "capiz", "antique",
+                "guimaras", "mindoro", "palawan", "marinduque", "romblon",
+                "masbate", "albay", "camarines sur", "camarines norte",
+                "sorsogon", "catanduanes", "isabela", "cagayan", "nueva vizcaya",
+                "quirino", "aurora", "ifugao", "benguet", "mountain province",
+                "kalinga", "apayao", "abRA", "zamboanga", "davao", "cotabato",
+                "south cotabato", "sultan kudarat", "sarangani", "agusan",
+                "surigao", "misamis", "bukidnon", "lanao", "maguindanao",
+                "sulu", "tawi-tawi", "basilan"
+        };
+
+        for (String province : phProvinces) {
+            if (lower.contains(province)) {
+                return true;
+            }
         }
-
-        if (!barangay.isEmpty()) {
-            if (addressBuilder.length() > 0) addressBuilder.append(", ");
-            addressBuilder.append(barangay);
-        }
-
-        if (!city.isEmpty()) {
-            if (addressBuilder.length() > 0) addressBuilder.append(", ");
-            addressBuilder.append(city);
-        }
-
-        if (!province.isEmpty() && !isRegionName(province)) {
-            if (addressBuilder.length() > 0) addressBuilder.append(", ");
-            addressBuilder.append(province);
-        }
-
-        return addressBuilder.toString();
+        return false;
     }
 
     private String capitalizeWords(String text) {
@@ -822,115 +766,195 @@ public class RegisterActivity extends AppCompatActivity {
 
         for (String word : words) {
             if (!word.isEmpty()) {
-                result.append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1).toLowerCase())
-                        .append(" ");
+                if (word.equalsIgnoreCase("del") || word.equalsIgnoreCase("de") ||
+                        word.equalsIgnoreCase("y") || word.equalsIgnoreCase("ng")) {
+                    result.append(word.toLowerCase()).append(" ");
+                } else {
+                    result.append(Character.toUpperCase(word.charAt(0)))
+                            .append(word.substring(1).toLowerCase())
+                            .append(" ");
+                }
             }
         }
 
         return result.toString().trim();
     }
 
-    private boolean isBarangayName(String text) {
-        if (text == null) return false;
-        String lowerText = text.toLowerCase();
-        return lowerText.contains("barangay") ||
-                lowerText.contains("brgy") ||
-                lowerText.contains("bgy") ||
-                lowerText.contains("village");
-    }
-
-    private boolean isRegionName(String area) {
-        if (area == null) return false;
-        String lowerArea = area.toLowerCase();
-        return lowerArea.contains("calabarzon") ||
-                lowerArea.contains("region") ||
-                lowerArea.equals("ncr") ||
-                lowerArea.contains("car") ||
-                lowerArea.contains("bangsamoro") ||
-                lowerArea.contains("administrative region") ||
-                lowerArea.contains("national capital region");
-    }
-
     // ==================== ERROR HANDLING ====================
+
+    private void stopLocationUpdates() {
+        if (locationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+            locationCallback = null;
+        }
+    }
+
     private void showLocationError() {
         runOnUiThread(() -> {
             isGettingLocation = false;
             Toast.makeText(RegisterActivity.this,
-                    "❌ Could not get location. Please:\n1. Enable Location Services\n2. Check GPS/WiFi signal\n3. Try again",
+                    "Cannot detect complete address. Please enter manually.",
                     Toast.LENGTH_LONG).show();
 
             new AlertDialog.Builder(RegisterActivity.this)
-                    .setTitle("Location Unavailable")
-                    .setMessage("Would you like to enter your address manually?")
-                    .setPositiveButton("Yes", (dialog, which) -> {
-                        address.setFocusableInTouchMode(true);
-                        address.requestFocus();
+                    .setTitle("Address Detection Failed")
+                    .setMessage("We couldn't detect a complete address (Street, Barangay, City, Province).\n\nPlease enter your address manually.")
+                    .setPositiveButton("Enter Manually", (dialog, which) -> {
+                        etAddress.setFocusable(true);
+                        etAddress.setFocusableInTouchMode(true);
+                        etAddress.requestFocus();
                     })
                     .setNegativeButton("Cancel", null)
                     .show();
         });
     }
 
-    private void showRetryDialog(String component, String message) {
-        runOnUiThread(() -> {
-            new AlertDialog.Builder(RegisterActivity.this)
-                    .setTitle("Issue with " + component)
-                    .setMessage(message + "\n\nWould you like to:")
-                    .setPositiveButton("Try Again", (dialog, which) -> {
-                        fetchCurrentLocation();
-                    })
-                    .setNegativeButton("Enter Manually", (dialog, which) -> {
-                        address.setFocusableInTouchMode(true);
-                        address.requestFocus();
-                    })
-                    .setCancelable(false)
-                    .show();
+    // ==================== BUTTON LISTENERS ====================
+
+    private void setupButtonListeners() {
+        btnRegister.setOnClickListener(v -> {
+            if (currentStep == 1) {
+                if (validateStep1()) {
+                    currentStep = 2;
+                    setupStep2();
+                }
+            } else if (currentStep == 2) {
+                if (validateStep2()) {
+                    currentStep = 3;
+                    setupStep3();
+                }
+            } else if (currentStep == 3) {
+                if (validateStep3()) {
+                    registerUser();
+                }
+            }
+        });
+
+        loginLink.setOnClickListener(v -> {
+            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+            finish();
         });
     }
 
+    // ==================== VALIDATION ====================
+
+    private boolean validateStep1() {
+        boolean isValid = true;
+
+        // Name validation
+        if (etName.getText().toString().trim().isEmpty()) {
+            etName.setError("Full name is required");
+            isValid = false;
+        } else {
+            etName.setError(null);
+        }
+
+        // Email validation
+        String email = etEmail.getText().toString().trim();
+        if (email.isEmpty()) {
+            etEmail.setError("Email is required");
+            isValid = false;
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.setError("Invalid email format");
+            isValid = false;
+        } else {
+            etEmail.setError(null);
+        }
+
+        // PH Phone validation (strict: 09XXXXXXXXX)
+        String phone = etPhone.getText().toString().trim();
+        if (phone.isEmpty()) {
+            etPhone.setError("Phone number is required");
+            isValid = false;
+        } else if (!isValidPhilippinePhone(phone)) {
+            etPhone.setError("Invalid PH mobile (09XXXXXXXXX)");
+            isValid = false;
+        } else {
+            etPhone.setError(null);
+        }
+
+        return isValid;
+    }
+
+    private boolean isValidPhilippinePhone(String phone) {
+        String clean = phone.replaceAll("[\\s\\-\\(\\)]", "");
+        return clean.matches("09\\d{9}"); // 09 + 9 digits = 11 total
+    }
+
+    private boolean validateStep2() {
+        if (etAddress.getText().toString().trim().isEmpty()) {
+            etAddress.setError("Address is required");
+            return false;
+        }
+        etAddress.setError(null);
+        return true;
+    }
+
+    private boolean validateStep3() {
+        boolean isValid = true;
+        String password = etPassword.getText().toString().trim();
+        String confirm = etConfirmPassword.getText().toString().trim();
+
+        if (password.isEmpty()) {
+            etPassword.setError("Password required");
+            isValid = false;
+        } else if (password.length() < 6) {
+            etPassword.setError("Min 6 characters");
+            isValid = false;
+        } else {
+            etPassword.setError(null);
+        }
+
+        if (confirm.isEmpty()) {
+            etConfirmPassword.setError("Confirm password");
+            isValid = false;
+        } else if (!password.equals(confirm)) {
+            etConfirmPassword.setError("Passwords don't match");
+            isValid = false;
+        } else {
+            etConfirmPassword.setError(null);
+        }
+
+        return isValid;
+    }
+
+    // ==================== BACK BUTTON ====================
+
+    @Override
+    public void onBackPressed() {
+        if (currentStep > 1) {
+            currentStep--;
+            if (currentStep == 1) setupStep1();
+            else if (currentStep == 2) setupStep2();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
     // ==================== REGISTRATION ====================
+
     private void registerUser() {
-        String fullName = name.getText().toString().trim();
-        String userEmail = email.getText().toString().trim();
-        String userPhone = phone.getText().toString().trim();
-        String userAddress = address.getText().toString().trim();
-        String userPassword = password.getText().toString().trim();
-        String confirmPass = confirmPassword.getText().toString().trim();
+        // Get all data
+        String name = etName.getText().toString().trim();
+        String email = etEmail.getText().toString().trim();
+        String phone = etPhone.getText().toString().trim();
+        String address = etAddress.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
 
-        // VALIDATIONS
-        if (TextUtils.isEmpty(fullName) || TextUtils.isEmpty(userEmail)
-                || TextUtils.isEmpty(userPhone) || TextUtils.isEmpty(userAddress)
-                || TextUtils.isEmpty(userPassword) || TextUtils.isEmpty(confirmPass)) {
-            Toast.makeText(this, "⚠️ All fields are required.", Toast.LENGTH_SHORT).show();
+        // Final validation
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email)
+                || TextUtils.isEmpty(phone) || TextUtils.isEmpty(address)
+                || TextUtils.isEmpty(password)) {
+            Toast.makeText(this, "All fields are required.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (!Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
-            Toast.makeText(this, "❌ Invalid email format.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (!Patterns.PHONE.matcher(userPhone).matches() || userPhone.length() < 10) {
-            Toast.makeText(this, "❌ Invalid phone number.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (userPassword.length() < 6) {
-            Toast.makeText(this, "❌ Password must be at least 6 characters.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (!userPassword.equals(confirmPass)) {
-            Toast.makeText(this, "❌ Passwords do not match.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // CREATE USER
+        // Disable button during registration
         btnRegister.setEnabled(false);
-        btnRegister.setText("Registering...");
+        btnRegister.setText("Creating Account...");
 
-        auth.createUserWithEmailAndPassword(userEmail, userPassword)
+        // Firebase Registration
+        auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     btnRegister.setEnabled(true);
                     btnRegister.setText("Create Account");
@@ -939,10 +963,10 @@ public class RegisterActivity extends AppCompatActivity {
                         FirebaseUser user = auth.getCurrentUser();
                         if (user != null) {
                             HashMap<String, Object> userData = new HashMap<>();
-                            userData.put("name", fullName);
-                            userData.put("email", userEmail);
-                            userData.put("phone", userPhone);
-                            userData.put("address", userAddress);
+                            userData.put("name", name);
+                            userData.put("email", email);
+                            userData.put("phone", phone);
+                            userData.put("address", address);
                             userData.put("role", "customer");
 
                             usersRef.child(user.getUid()).setValue(userData)
@@ -950,22 +974,31 @@ public class RegisterActivity extends AppCompatActivity {
                                         if (dbTask.isSuccessful()) {
                                             user.sendEmailVerification();
                                             Toast.makeText(RegisterActivity.this,
-                                                    "✅ Registration successful! Please verify your email.",
+                                                    "Registration successful! Please verify your email.",
                                                     Toast.LENGTH_LONG).show();
                                             startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                                             finish();
                                         } else {
                                             Toast.makeText(RegisterActivity.this,
-                                                    "❌ Failed to save user info.",
+                                                    "Failed to save user data",
                                                     Toast.LENGTH_LONG).show();
                                         }
                                     });
                         }
                     } else {
                         Toast.makeText(RegisterActivity.this,
-                                "❌ Registration failed: " + task.getException().getMessage(),
+                                "Registration failed: " + task.getException().getMessage(),
                                 Toast.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+        }
+        stopLocationUpdates();
     }
 }

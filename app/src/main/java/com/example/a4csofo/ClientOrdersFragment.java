@@ -39,7 +39,11 @@ public class ClientOrdersFragment extends Fragment {
     private FirebaseAuth auth;
     private FirebaseUser currentUser;
 
+    // Track old status to detect changes
     private final HashMap<String, String> orderStatusMap = new HashMap<>();
+
+    // Store listener for cleanup
+    private ChildEventListener ordersListener;
 
     public ClientOrdersFragment() { }
 
@@ -56,26 +60,41 @@ public class ClientOrdersFragment extends Fragment {
         emptyLayout = view.findViewById(R.id.emptyLayout);
         txtEmptyMessage = view.findViewById(R.id.txtEmptyMessage);
 
-        // Setup RecyclerView
         recyclerOrders.setLayoutManager(new LinearLayoutManager(requireContext()));
         orderList = new ArrayList<>();
         ordersAdapter = new OrdersAdapter(requireContext(), orderList);
 
-        // Set click listeners
+        // Adapter click listeners
         ordersAdapter.setOnOrderClickListener(new OrdersAdapter.OnOrderClickListener() {
             @Override
-            public void onOrderClick(OrderModel order) {
-                // Expand/collapse handled in adapter
-            }
+            public void onOrderClick(OrderModel order) { }
+
             @Override
             public void onViewReceiptClick(OrderModel order) {
                 showOrderReceipt(order);
+            }
+
+            @Override
+            public void onRateFoodClick(OrderModel order) {
+                if ("completed".equalsIgnoreCase(order.getStatus())) {
+                    openRatingScreen(order);
+                } else {
+                    Toast.makeText(requireContext(), "You can only rate delivered orders", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelOrderClick(OrderModel order) {
+                if (order.canUpdateStatus()) {
+                    cancelOrder(order);
+                } else {
+                    Toast.makeText(requireContext(), "This order cannot be cancelled", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
         recyclerOrders.setAdapter(ordersAdapter);
 
-        // Firebase
         auth = FirebaseAuth.getInstance();
         currentUser = auth.getCurrentUser();
 
@@ -95,41 +114,49 @@ public class ClientOrdersFragment extends Fragment {
         progressBar.setVisibility(View.VISIBLE);
         orderList.clear();
 
-        ordersRef.orderByChild("userId").equalTo(currentUser.getUid())
-                .addChildEventListener(new ChildEventListener() {
-                    @Override
-                    public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                        handleOrderSnapshot(snapshot, false);
-                    }
+        if (ordersListener != null) {
+            ordersRef.removeEventListener(ordersListener);
+        }
 
-                    @Override
-                    public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                        handleOrderSnapshot(snapshot, true);
-                    }
+        ordersListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                handleOrderSnapshot(snapshot, false);
+            }
 
-                    @Override
-                    public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-                        String key = snapshot.getKey();
-                        for (int i = 0; i < orderList.size(); i++) {
-                            if (orderList.get(i).getOrderKey().equals(key)) {
-                                orderList.remove(i);
-                                orderStatusMap.remove(key);
-                                ordersAdapter.updateOrders(orderList);
-                                break;
-                            }
-                        }
-                        updateUI();
-                    }
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                handleOrderSnapshot(snapshot, true);
+            }
 
-                    @Override
-                    public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) { }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(requireContext(), "Error loading orders", Toast.LENGTH_SHORT).show();
-                        progressBar.setVisibility(View.GONE);
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+                String key = snapshot.getKey();
+                if (key == null) return;
+                for (int i = 0; i < orderList.size(); i++) {
+                    if (orderList.get(i).getOrderKey().equals(key)) {
+                        orderList.remove(i);
+                        orderStatusMap.remove(key);
+                        ordersAdapter.updateOrders(orderList);
+                        break;
                     }
-                });
+                }
+                updateUI();
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) { }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(requireContext(), "Error loading orders", Toast.LENGTH_SHORT).show();
+                progressBar.setVisibility(View.GONE);
+            }
+        };
+
+        ordersRef.orderByChild("userId")
+                .equalTo(currentUser.getUid())
+                .addChildEventListener(ordersListener);
     }
 
     private void handleOrderSnapshot(DataSnapshot snapshot, boolean isUpdate) {
@@ -137,39 +164,42 @@ public class ClientOrdersFragment extends Fragment {
             OrderModel order = parseOrderManually(snapshot);
             if (order == null) return;
 
+            String orderKey = order.getOrderKey();
+            String newStatus = order.getStatus();
+
             if (isUpdate) {
-                // Check for status change
-                String oldStatus = orderStatusMap.get(order.getOrderKey());
-                String newStatus = order.getStatus();
-                if (oldStatus != null && !oldStatus.equals(newStatus)) {
-                    showStatusToast(order.getOrderKey(), newStatus);
+                String oldStatus = orderStatusMap.get(orderKey);
+                if (oldStatus != null && newStatus != null && !oldStatus.equals(newStatus)) {
+                    showStatusToast(orderKey, newStatus);
                 }
 
-                // Update existing order
                 boolean found = false;
                 for (int i = 0; i < orderList.size(); i++) {
-                    if (orderList.get(i).getOrderKey().equals(order.getOrderKey())) {
+                    if (orderList.get(i).getOrderKey().equals(orderKey)) {
                         orderList.set(i, order);
                         found = true;
                         break;
                     }
                 }
-
-                if (!found) {
-                    orderList.add(order);
-                }
+                if (!found) orderList.add(order);
             } else {
-                // Add new order
-                orderList.add(order);
+                boolean exists = false;
+                for (OrderModel o : orderList) {
+                    if (o.getOrderKey().equals(orderKey)) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) orderList.add(order);
             }
 
-            // Save status and update
-            orderStatusMap.put(order.getOrderKey(), order.getStatus());
+            orderStatusMap.put(orderKey, newStatus);
             sortAndUpdateOrders();
 
         } catch (Exception e) {
             Log.e("ClientOrders", "Error processing order: " + e.getMessage());
         }
+
         updateUI();
     }
 
@@ -185,50 +215,38 @@ public class ClientOrdersFragment extends Fragment {
 
     private void updateUI() {
         progressBar.setVisibility(View.GONE);
-        emptyLayout.setVisibility(orderList.isEmpty() ? View.VISIBLE : View.GONE);
+        if (orderList.isEmpty()) {
+            emptyLayout.setVisibility(View.VISIBLE);
+            txtEmptyMessage.setText("You have no orders yet.");
+        } else {
+            emptyLayout.setVisibility(View.GONE);
+        }
     }
 
     private void showStatusToast(String orderKey, String newStatus) {
-        // Display only first 6 characters of order ID
         String shortId = formatOrderId(orderKey);
         Toast.makeText(requireContext(),
                 "Order #" + shortId + " is now " + newStatus,
                 Toast.LENGTH_LONG).show();
     }
 
-    // Format order ID to show only first 6 characters
     private String formatOrderId(String orderKey) {
-        if (orderKey == null || orderKey.isEmpty()) {
-            return "N/A";
-        }
-        // If order key is longer than 6 characters, show first 6
-        if (orderKey.length() > 6) {
-            return orderKey.substring(0, 6).toUpperCase();
-        }
-        return orderKey.toUpperCase();
+        if (orderKey == null || orderKey.isEmpty()) return "N/A";
+        return orderKey.length() > 6 ? orderKey.substring(0, 6).toUpperCase() : orderKey.toUpperCase();
     }
 
     private OrderModel parseOrderManually(DataSnapshot snapshot) {
         try {
             OrderModel order = new OrderModel();
-
             String orderKey = snapshot.getKey();
             if (orderKey == null) return null;
             order.setOrderKey(orderKey);
 
-            // Check user
             String userId = getValue(snapshot, "userId", String.class);
-            if (userId == null) {
-                userId = getValue(snapshot, "customerUid", String.class);
-            }
-
-            if (userId == null || !userId.equals(currentUser.getUid())) {
-                return null;
-            }
+            if (userId == null) userId = getValue(snapshot, "customerUid", String.class);
+            if (userId == null || !userId.equals(currentUser.getUid())) return null;
 
             order.setUserId(userId);
-
-            // REMOVED: setCustomerName - di na kailangan
             order.setPayment_method(getValue(snapshot, "payment_method", String.class));
             order.setStatus(getValue(snapshot, "status", String.class));
             order.setOrderType(getValue(snapshot, "orderType", String.class));
@@ -237,7 +255,6 @@ public class ClientOrdersFragment extends Fragment {
             order.setPickupTime(getValue(snapshot, "pickupTime", String.class));
             order.setGcashReferenceNumber(getValue(snapshot, "gcashReferenceNumber", String.class));
 
-            // Parse items
             if (snapshot.hasChild("items")) {
                 List<String> items = new ArrayList<>();
                 for (DataSnapshot itemSnap : snapshot.child("items").getChildren()) {
@@ -247,14 +264,10 @@ public class ClientOrdersFragment extends Fragment {
                 order.setItems(items);
             }
 
-            // Parse total price
             order.setTotal_price(parseTotalPrice(snapshot));
 
-            // Parse order date
             Long orderDate = getValue(snapshot, "orderDate", Long.class);
-            if (orderDate != null) {
-                order.setOrderDate(orderDate);
-            }
+            if (orderDate != null) order.setOrderDate(orderDate);
 
             return order;
 
@@ -265,29 +278,20 @@ public class ClientOrdersFragment extends Fragment {
     }
 
     private <T> T getValue(DataSnapshot snapshot, String child, Class<T> type) {
-        if (snapshot.hasChild(child)) {
-            return snapshot.child(child).getValue(type);
-        }
+        if (snapshot.hasChild(child)) return snapshot.child(child).getValue(type);
         return null;
     }
 
     private double parseTotalPrice(DataSnapshot snapshot) {
         if (!snapshot.hasChild("total_price")) return 0.0;
-
         Object totalObj = snapshot.child("total_price").getValue();
-        if (totalObj instanceof Double) {
-            return (Double) totalObj;
-        } else if (totalObj instanceof Long) {
-            return ((Long) totalObj).doubleValue();
-        } else if (totalObj instanceof Integer) {
-            return ((Integer) totalObj).doubleValue();
-        } else if (totalObj instanceof String) {
+        if (totalObj instanceof Double) return (Double) totalObj;
+        if (totalObj instanceof Long) return ((Long) totalObj).doubleValue();
+        if (totalObj instanceof Integer) return ((Integer) totalObj).doubleValue();
+        if (totalObj instanceof String) {
             try {
-                String str = (String) totalObj;
-                return Double.parseDouble(str.replace("₱", "").replace(",", "").trim());
-            } catch (NumberFormatException e) {
-                return 0.0;
-            }
+                return Double.parseDouble(((String) totalObj).replace("₱","").replace(",","").trim());
+            } catch (NumberFormatException e) { return 0.0; }
         }
         return 0.0;
     }
@@ -296,7 +300,6 @@ public class ClientOrdersFragment extends Fragment {
         StringBuilder receipt = new StringBuilder();
         receipt.append("🧾 ORDER RECEIPT\n\n");
         receipt.append("Order ID: ").append(formatOrderId(order.getOrderKey())).append("\n");
-        // REMOVED: Customer name line
         receipt.append("Date: ").append(new java.text.SimpleDateFormat("MMM dd, yyyy hh:mm a")
                 .format(new java.util.Date(order.getOrderDate()))).append("\n");
         receipt.append("Status: ").append(order.getStatus()).append("\n");
@@ -325,5 +328,100 @@ public class ClientOrdersFragment extends Fragment {
                 .setMessage(receipt.toString())
                 .setPositiveButton("OK", null)
                 .show();
+    }
+
+    private void openRatingScreen(OrderModel order) {
+        String[] options = {"Bad", "Okay", "Good", "Very Good", "Excellent"};
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Rate your food")
+                .setItems(options, (dialog, which) -> {
+                    int ratingValue = which + 1; // 0-based index → 1-5
+                    saveOrderRating(order, ratingValue);
+
+                    Toast.makeText(requireContext(),
+                            "You rated Order #" + formatOrderId(order.getOrderKey()) +
+                                    " with rating " + ratingValue,
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void saveOrderRating(OrderModel order, int rating) {
+
+        if (order.getItems() == null || order.getItems().isEmpty()) return;
+
+        DatabaseReference foodsRef =
+                FirebaseDatabase.getInstance().getReference("foods");
+
+        for (String itemName : order.getItems()) {
+
+            String cleanName = itemName.replaceAll("x\\d+", "").trim();
+
+            foodsRef.orderByChild("name")
+                    .equalTo(cleanName)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                            for (DataSnapshot foodSnap : snapshot.getChildren()) {
+
+                                double currentRating =
+                                        foodSnap.child("rating").getValue(Double.class) != null
+                                                ? foodSnap.child("rating").getValue(Double.class)
+                                                : 0;
+
+                                int ratingCount =
+                                        foodSnap.child("ratingCount").getValue(Integer.class) != null
+                                                ? foodSnap.child("ratingCount").getValue(Integer.class)
+                                                : 0;
+
+                                double newRating =
+                                        ((currentRating * ratingCount) + rating)
+                                                / (ratingCount + 1);
+
+                                foodSnap.getRef().child("rating").setValue(newRating);
+                                foodSnap.getRef().child("ratingCount").setValue(ratingCount + 1);
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {}
+                    });
+        }
+
+        // Optional: mark order as rated
+        FirebaseDatabase.getInstance()
+                .getReference("orders")
+                .child(order.getOrderKey())
+                .child("rated")
+                .setValue(true);
+    }
+
+    private void cancelOrder(OrderModel order) {
+        String key = order.getOrderKey();
+        if (key == null) return;
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Cancel Order")
+                .setMessage("Are you sure you want to cancel Order #" + formatOrderId(key) + "?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    // Perform cancellation
+                    ordersRef.child(key).child("status").setValue("Cancelled")
+                            .addOnSuccessListener(aVoid -> Toast.makeText(requireContext(),
+                                    "Order #" + formatOrderId(key) + " cancelled", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e -> Toast.makeText(requireContext(),
+                                    "Failed to cancel order", Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton("No", null)
+                .show();
+    }
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (ordersListener != null) {
+            ordersRef.removeEventListener(ordersListener);
+        }
     }
 }

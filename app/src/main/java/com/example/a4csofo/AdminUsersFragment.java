@@ -11,8 +11,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,11 +32,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -46,9 +44,10 @@ public class AdminUsersFragment extends Fragment {
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
     private EditText searchBox;
-    private TextView tvEmptyState, tvUserCount;
+    private LinearLayout tvEmptyState;
+
+    private TextView tvUserCount;
     private SwipeRefreshLayout swipeRefresh;
-    private MaterialButton btnSort, btnFilterRole, btnExport;
 
     // Adapters & Data
     private AdminUserAdapter userAdapter;
@@ -96,7 +95,6 @@ public class AdminUsersFragment extends Fragment {
 
         // Setup event listeners
         setupSearch();
-        setupButtons();
         setupSwipeRefresh();
 
         return view;
@@ -109,10 +107,6 @@ public class AdminUsersFragment extends Fragment {
         tvEmptyState = view.findViewById(R.id.tvEmptyState);
         tvUserCount = view.findViewById(R.id.tvUserCount);
         swipeRefresh = view.findViewById(R.id.swipeRefresh);
-
-        btnSort = view.findViewById(R.id.btnSort);
-        btnFilterRole = view.findViewById(R.id.btnFilterRole);
-        btnExport = view.findViewById(R.id.btnExport);
     }
 
     private void setupRecyclerView() {
@@ -169,7 +163,7 @@ public class AdminUsersFragment extends Fragment {
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
 
-                tvEmptyState.setText("Failed to load users");
+                tvUserCount.setText("Failed to load users");
                 tvEmptyState.setVisibility(View.VISIBLE);
 
                 Toast.makeText(getContext(),
@@ -294,45 +288,6 @@ public class AdminUsersFragment extends Fragment {
         return s1.compareToIgnoreCase(s2);
     }
 
-    private void showSortOptions() {
-        String[] options = {"Name (A-Z)", "Name (Z-A)", "By Role"};
-
-        AlertDialog dialog = new AlertDialog.Builder(getContext())
-                .setTitle("Sort Users")
-                .setItems(options, (d, which) -> {
-                    switch (which) {
-                        case 0: currentSort = "name_asc"; break;
-                        case 1: currentSort = "name_desc"; break;
-                        case 2: currentSort = "role"; break;
-                    }
-                    applyFiltersAndUpdateUI();
-                })
-                .setNegativeButton("Cancel", null)
-                .create();
-
-        dialog.show();
-    }
-
-    // ==================== FILTER BY ROLE ====================
-
-    private void showRoleFilterOptions() {
-        String[] options = {"All Users", "Customers Only", "Staff Only", "Admins Only"};
-
-        new AlertDialog.Builder(getContext())
-                .setTitle("Filter by Role")
-                .setItems(options, (dialog, which) -> {
-                    switch (which) {
-                        case 0: currentRoleFilter = "all"; break;
-                        case 1: currentRoleFilter = "customer"; break;
-                        case 2: currentRoleFilter = "staff"; break;
-                        case 3: currentRoleFilter = "admin"; break;
-                    }
-                    applyFiltersAndUpdateUI();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
     // ==================== USER OPERATIONS ====================
 
     private void deleteUser(String uid) {
@@ -425,7 +380,6 @@ public class AdminUsersFragment extends Fragment {
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setView(dialogView)
                 .setPositiveButton("Close", null)
-                .setNeutralButton("Edit Role", (d, which) -> editUserRole(user))
                 .create();
 
         dialog.show();
@@ -454,7 +408,6 @@ public class AdminUsersFragment extends Fragment {
 
                                 // SAFE PARSING - manual instead of getValue(OrderModel.class)
                                 String status = getStringValue(orderSnap, "status", "");
-                                String paymentMethod = getStringValue(orderSnap, "payment_method", "");
 
                                 // Try to get total_price safely
                                 double orderTotal = 0;
@@ -515,44 +468,6 @@ public class AdminUsersFragment extends Fragment {
                 });
     }
 
-    private void editUserRole(AdminUserModel user) {
-        if (currentAdminId != null && user.getUid().equals(currentAdminId)) {
-            Toast.makeText(getContext(), "You cannot change your own role", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        String currentRole = user.getRole() != null ? user.getRole() : "customer";
-
-        AlertDialog dialog = new AlertDialog.Builder(getContext())
-                .setTitle("Change Role")
-                .setMessage("Current: " + currentRole.toUpperCase() + "\n\nSelect new role:")
-                .setPositiveButton("CUSTOMER", (d, which) -> updateRole(user.getUid(), "customer"))
-                .setNeutralButton("STAFF", (d, which) -> updateRole(user.getUid(), "staff"))
-                .setNegativeButton("ADMIN", (d, which) -> updateRole(user.getUid(), "admin"))
-                .create();
-
-        dialog.show();
-    }
-
-    private void updateRole(String uid, String newRole) {
-        usersRef.child(uid).child("role").setValue(newRole)
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(getContext(), "Role updated to " + newRole.toUpperCase(), Toast.LENGTH_SHORT).show();
-
-                    // Update local data
-                    for (AdminUserModel user : userList) {
-                        if (user.getUid().equals(uid)) {
-                            user.setRole(newRole);
-                            break;
-                        }
-                    }
-                    applyFiltersAndUpdateUI();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
     // ==================== HELPER METHODS ====================
 
     private void updateUserCount() {
@@ -567,55 +482,16 @@ public class AdminUsersFragment extends Fragment {
     private void updateEmptyState() {
         if (filteredList.isEmpty()) {
             if (userList.isEmpty()) {
-                tvEmptyState.setText("No users found in database");
+                tvUserCount.setText("No users found in database");
             } else if (!lastSearchQuery.isEmpty()) {
-                tvEmptyState.setText("No users match '" + lastSearchQuery + "'");
+                tvUserCount.setText("No users match '" + lastSearchQuery + "'");
             } else if (!currentRoleFilter.equals("all")) {
-                tvEmptyState.setText("No " + currentRoleFilter + " users found");
+                tvUserCount.setText("No " + currentRoleFilter + " users found");
             }
             tvEmptyState.setVisibility(View.VISIBLE);
         } else {
             tvEmptyState.setVisibility(View.GONE);
         }
-    }
-
-    // ==================== SETUP METHODS ====================
-
-    private void setupButtons() {
-        btnSort.setOnClickListener(v -> showSortOptions());
-        btnFilterRole.setOnClickListener(v -> showRoleFilterOptions());
-
-        btnExport.setOnClickListener(v -> {
-            if (filteredList.isEmpty()) {
-                Toast.makeText(getContext(), "No users to export", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            AlertDialog exportDialog = new AlertDialog.Builder(getContext())
-                    .setTitle("Export Users")
-                    .setMessage("Export " + filteredList.size() + " users as:")
-                    .setPositiveButton("CSV", (d, which) -> exportAsCSV())
-                    .setNegativeButton("Cancel", null)
-                    .create();
-            exportDialog.show();
-        });
-    }
-
-    private void exportAsCSV() {
-        StringBuilder csv = new StringBuilder();
-        csv.append("Name,Email,Role,Phone,Status\n");
-
-        for (AdminUserModel user : filteredList) {
-            csv.append(user.getName()).append(",")
-                    .append(user.getEmail()).append(",")
-                    .append(user.getRole()).append(",")
-                    .append(user.getPhone()).append(",")
-                    .append(user.isOnline() ? "Online" : "Offline").append("\n");
-        }
-
-        Toast.makeText(getContext(),
-                "Exported " + filteredList.size() + " users to CSV",
-                Toast.LENGTH_SHORT).show();
     }
 
     private void setupSwipeRefresh() {

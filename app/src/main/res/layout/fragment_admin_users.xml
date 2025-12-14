@@ -12,7 +12,7 @@
         android:orientation="vertical"
         android:background="@color/primary"
         android:elevation="4dp"
-        android:padding="12dp">
+        android:padding="16dp">
 
         <!-- Title and Stats -->
         <LinearLayout
@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="16dp">
 
             <TextView
                 android:layout_width="0dp"
@@ -48,7 +48,7 @@
         <EditText
             android:id="@+id/editSearch"
             android:layout_width="match_parent"
-            android:layout_height="45dp"
+            android:layout_height="48dp"
             android:hint="🔍 Search users..."
             android:inputType="text"
             android:maxLines="1"
@@ -58,45 +58,6 @@
             android:drawablePadding="8dp"
             android:elevation="2dp"
             android:singleLine="true" />
-
-        <!-- Action Buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="12dp"
-            android:gravity="center">
-
-            <Button
-                android:id="@+id/btnSort"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="SORT"
-                android:background="@color/background_white"
-                android:textColor="@color/primary" />
-
-            <Button
-                android:id="@+id/btnFilterRole"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="4dp"
-                android:text="FILTER"
-                android:background="@color/background_white"
-                android:textColor="@color/primary" />
-
-            <Button
-                android:id="@+id/btnExport"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="EXPORT"
-                android:background="@color/background_white"
-                android:textColor="@color/primary" />
-        </LinearLayout>
     </LinearLayout>
 
     <!-- Swipe Refresh Layout -->
@@ -104,7 +65,8 @@
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/headerLayout">
+        android:layout_below="@id/headerLayout"
+        android:paddingTop="8dp">
 
         <!-- Main Content -->
         <RelativeLayout
@@ -121,23 +83,46 @@
                 android:indeterminateTint="@color/primary" />
 
             <!-- Empty State -->
-            <TextView
+            <LinearLayout
                 android:id="@+id/tvEmptyState"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="No users found"
-                android:textSize="16sp"
-                android:textColor="@color/text_secondary"
+                android:orientation="vertical"
+                android:gravity="center"
                 android:visibility="gone"
-                android:drawablePadding="8dp" />
+                android:padding="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="👤"
+                    android:textSize="48sp"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No users found"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_secondary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Try adjusting your search or filters"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
 
             <!-- Users List -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerUsers"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="8dp"
+                android:padding="16dp"
                 android:clipToPadding="false"
                 android:visibility="visible" />
         </RelativeLayout>

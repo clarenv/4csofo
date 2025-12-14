@@ -43,7 +43,7 @@ public class ClientCartFragment extends Fragment {
     private DatabaseReference foodsRef;
 
     // Quantity limitations
-    private static final int MAX_QUANTITY_PER_ITEM = 10;
+    private static final int MAX_QUANTITY_PER_ITEM =50;
     private static final int MAX_TOTAL_ITEMS = 50;
     private static final double MAX_TOTAL_AMOUNT = 10000.00;
 

@@ -327,7 +327,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:text="CLOSE"
-            android:background="#FF9800"
+            android:backgroundTint="@color/primary"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold" />

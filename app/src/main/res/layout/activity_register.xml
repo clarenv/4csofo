@@ -2,6 +2,7 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/scrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
@@ -25,113 +26,243 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Full Name -->
+        <!-- Step Header -->
+        <TextView
+            android:id="@+id/tvStepHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Step 1 of 3: Personal Information"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/logoImage"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- ============ STEP 1: PERSONAL INFO ============ -->
+
+        <!-- Full Name Label -->
+        <TextView
+            android:id="@+id/tvNameLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Full Name"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/tvStepHeader"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="8dp" />
+
+        <!-- Full Name Input -->
         <EditText
             android:id="@+id/etName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Full Name"
+            android:hint="e.g., Juan Dela Cruz"
             android:inputType="textPersonName"
             android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            app:layout_constraintTop_toBottomOf="@id/logoImage"
+            app:layout_constraintTop_toBottomOf="@id/tvNameLabel"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="30dp" />
+            android:layout_marginTop="4dp" />
 
-        <!-- Email -->
-        <EditText
-            android:id="@+id/etEmail"
+        <!-- Email Label -->
+        <TextView
+            android:id="@+id/tvEmailLabel"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
-            android:padding="12dp"
+            android:text="Email Address"
             android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
+            android:textSize="14sp"
+            android:textStyle="bold"
             app:layout_constraintTop_toBottomOf="@id/etName"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp" />
 
-        <!-- Phone Number -->
+        <!-- Email Input -->
         <EditText
-            android:id="@+id/etPhone"
+            android:id="@+id/etEmail"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Phone Number"
-            android:inputType="phone"
+            android:hint="e.g., juan.delacruz@email.com"
+            android:inputType="textEmailAddress"
             android:padding="12dp"
-            android:maxLength="11"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
+            app:layout_constraintTop_toBottomOf="@id/tvEmailLabel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="4dp" />
+
+        <!-- Phone Label -->
+        <TextView
+            android:id="@+id/tvPhoneLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Philippine Mobile Number"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
             app:layout_constraintTop_toBottomOf="@id/etEmail"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp" />
 
-        <!-- Address (auto-fill on tap) -->
+        <!-- Phone Input -->
         <EditText
-            android:id="@+id/etAddress"
+            android:id="@+id/etPhone"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Complete Address"
+            android:hint="e.g., 09171234567"
+            android:inputType="phone"
             android:padding="12dp"
-            android:inputType="textPostalAddress"
+            android:maxLength="11"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
+            app:layout_constraintTop_toBottomOf="@id/tvPhoneLabel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="4dp" />
+
+        <!-- ============ STEP 2: ADDRESS ============ -->
+
+        <!-- Address Label (HIDDEN in Step 1) -->
+        <TextView
+            android:id="@+id/tvAddressLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Complete Philippine Address"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
             app:layout_constraintTop_toBottomOf="@id/etPhone"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="16dp"
-            android:focusable="false" /> <!-- prevents keyboard popup -->
+            android:visibility="gone" />
 
-        <!-- Password -->
+        <!-- Address Input (HIDDEN in Step 1) -->
+        <EditText
+            android:id="@+id/etAddress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:hint="Tap to use current location or enter manually"
+            android:padding="12dp"
+            android:inputType="textPostalAddress"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            app:layout_constraintTop_toBottomOf="@id/tvAddressLabel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
+        <!-- Address Format Hint (HIDDEN in Step 1) -->
+        <TextView
+            android:id="@+id/tvAddressHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Format: Street, Barangay, City/Municipality, Province"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintTop_toBottomOf="@id/etAddress"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
+        <!-- ============ STEP 3: PASSWORD ============ -->
+
+        <!-- Password Label (HIDDEN in Steps 1-2) -->
+        <TextView
+            android:id="@+id/tvPasswordLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Password"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/tvAddressHint"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <!-- Password Input (HIDDEN in Steps 1-2) -->
         <EditText
             android:id="@+id/etPassword"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Password"
+            android:hint="At least 6 characters"
             android:inputType="textPassword"
             android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            app:layout_constraintTop_toBottomOf="@id/etAddress"
+            app:layout_constraintTop_toBottomOf="@id/tvPasswordLabel"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
 
-        <!-- Confirm Password -->
+        <!-- Confirm Password Label (HIDDEN in Steps 1-2) -->
+        <TextView
+            android:id="@+id/tvConfirmPasswordLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Confirm Password"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/etPassword"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <!-- Confirm Password Input (HIDDEN in Steps 1-2) -->
         <EditText
             android:id="@+id/etConfirmPassword"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Confirm Password"
+            android:hint="Re-enter your password"
             android:inputType="textPassword"
             android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            app:layout_constraintTop_toBottomOf="@id/etPassword"
+            app:layout_constraintTop_toBottomOf="@id/tvConfirmPasswordLabel"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
 
-        <!-- Register Button -->
+        <!-- ============ BUTTONS ============ -->
+
+        <!-- Register/Next Button -->
         <Button
             android:id="@+id/btnRegister"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Create Account"
+            android:text="Next"
             android:textAllCaps="false"
             android:textColor="@color/text_white"
             android:backgroundTint="@color/primary"
+            android:padding="16dp"
+            android:textSize="16sp"
             app:layout_constraintTop_toBottomOf="@id/etConfirmPassword"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginTop="24dp" />
+            android:layout_marginTop="32dp" />
 
-        <!-- Login Link -->
+        <!-- Login Link (HIDDEN in Steps 1-2) -->
         <TextView
             android:id="@+id/loginLink"
             android:layout_width="wrap_content"
@@ -142,7 +273,8 @@
             android:layout_marginTop="16dp"
             app:layout_constraintTop_toBottomOf="@id/btnRegister"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            android:visibility="gone" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

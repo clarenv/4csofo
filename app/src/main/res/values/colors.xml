@@ -1,42 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Primary Brand Colors -->
-    <color name="primary">#10A048</color>          <!-- Mint Drop (buttons/highlights) -->
-    <color name="primary_dark">#3FC66D</color>     <!-- Darker Mint Drop for pressed states -->
-    <color name="primary_light">#64B5F6</color>    <!-- Optional lighter shade -->
-    <color name="primary_color">#10A048</color>    <!-- Matches previous references -->
-    <color name="accent">#F3E2C7</color>           <!-- Cream for accents -->
-    <color name="accent_dark">#E6CFAC</color>      <!-- Darker Cream -->
+    <!-- HAWAIIAN/RESTAURANT THEME COLORS -->
 
-    <!-- Background Colors -->
-    <color name="background_light">#FFF7E5</color> <!-- Light Cream background -->
+    <!-- Primary Brand Colors - Tropical Vibes -->
+    <color name="primary">#0A7A3B</color>          <!-- Deep Palm Green -->
+    <color name="primary_dark">#08602E</color>     <!-- Darker Palm Green -->
+    <color name="primary_light">#2E8B57</color>    <!-- Sea Green -->
+    <color name="primary_color">#0A7A3B</color>    <!-- Matches previous references -->
+
+    <!-- Accent Colors - Tropical Fruits -->
+    <color name="accent">#FF6B35</color>           <!-- Sunset Orange -->
+    <color name="accent_dark">#E55A2B</color>      <!-- Darker Orange -->
+    <color name="accent_secondary">#FFD166</color> <!-- Pineapple Yellow -->
+    <color name="accent_tertiary">#06D6A0</color>  <!-- Turquoise Ocean -->
+
+    <!-- Background Colors - Beach & Sand -->
+    <color name="background_light">#FFF8F0</color> <!-- Sandy Beach -->
     <color name="background_white">#FFFFFF</color> <!-- White -->
-    <color name="background_card">#F4F4F4</color>  <!-- Card background -->
-    <color name="background_screen">#FFFFFF</color> <!-- ScrollView background -->
-    <color name="light_gray">#E0E0E0</color>       <!-- Light gray for borders / subtle backgrounds -->
+    <color name="background_card">#FFFAF5</color>  <!-- Light Sand Card -->
+    <color name="background_screen">#FFF8F0</color> <!-- Sandy Beach background -->
+    <color name="light_gray">#E8E0D5</color>       <!-- Sand Gray -->
 
     <!-- Text Colors -->
     <color name="text_white">#FFFFFF</color>       <!-- White text -->
-    <color name="text_primary">#000000</color>     <!-- Primary text (black) -->
-    <color name="text_secondary">#212020</color>   <!-- Secondary text -->
+    <color name="text_primary">#2D2D2A</color>     <!-- Dark Charcoal -->
+    <color name="text_secondary">#5A5A57</color>   <!-- Medium Gray -->
+    <color name="text_accent">#0A7A3B</color>      <!-- Palm Green text -->
 
-    <!-- Divider -->
-    <color name="divider_color">#D9D9D9</color>   <!-- Light gray divider -->
+    <!-- Divider & Border Colors -->
+    <color name="divider_color">#D4C6B5</color>    <!-- Light Sand divider -->
+    <color name="border_light">#E8E0D5</color>     <!-- Sand border -->
 
-    <!-- Extra Colors for Logo -->
+    <!-- Logo & Icon Colors -->
     <color name="white">#FFFFFF</color>
-    <color name="logo_stroke">#4ADE80</color>      <!-- Mint Drop stroke -->
+    <color name="logo_stroke">#FF6B35</color>      <!-- Sunset Orange stroke -->
+    <color name="logo_fill">#0A7A3B</color>        <!-- Palm Green fill -->
 
-    <!-- Navigation ripple -->
-    <color name="nav_ripple">#2010A048</color>    <!-- Primary with 12% opacity -->
+    <!-- Navigation & Interactive Colors -->
+    <color name="nav_ripple">#200A7A3B</color>    <!-- Primary with 12% opacity -->
+    <color name="button_hover">#FFD166</color>     <!-- Pineapple Yellow hover -->
+    <color name="link_color">#118AB2</color>       <!-- Ocean Blue links -->
 
     <!-- Status Colors -->
-    <color name="status_success">#10A048</color>
-    <color name="status_warning">#FF9800</color>
-    <color name="status_error">#F44336</color>
+    <color name="status_success">#0A7A3B</color>   <!-- Palm Green success -->
+    <color name="status_warning">#FF9E00</color>   <!-- Mango Orange warning -->
+    <color name="status_error">#EF476F</color>     <!-- Hibiscus Red error -->
+    <color name="status_info">#118AB2</color>      <!-- Ocean Blue info -->
 
-    <!-- Background variations -->
+    <!-- Surface & Elevation Colors -->
     <color name="surface_elevated">#FFFFFF</color>
-    <color name="surface_container">#F8F8F8</color>
+    <color name="surface_container">#FFF8F0</color>
+    <color name="surface_card">#FFFFFF</color>     <!-- Card surface -->
+
+    <!-- Social Media Colors (for login buttons) -->
+    <color name="facebook_blue">#1877F2</color>
+    <color name="google_red">#DB4437</color>
+    <color name="twitter_blue">#1DA1F2</color>
+
+    <!-- Food & Restaurant Specific -->
+    <color name="food_red">#E63946</color>         <!-- Tomato Red -->
+    <color name="food_yellow">#FFD166</color>      <!-- Pineapple Yellow -->
+    <color name="food_green">#06D6A0</color>       <!-- Avocado Green -->
+    <color name="food_orange">#FF6B35</color>      <!-- Sunset Orange -->
+    <color name="food_brown">#8B4513</color>       <!-- Chocolate Brown -->
+
+    <!-- Tropical Colors -->
+    <color name="tropical_blue">#118AB2</color>    <!-- Ocean Blue -->
+    <color name="tropical_pink">#FF9EB5</color>    <!-- Hibiscus Pink -->
+    <color name="tropical_purple">#9B5DE5</color>  <!-- Orchid Purple -->
+    <color name="tropical_yellow">#FFD166</color>  <!-- Sun Yellow -->
+    <color name="tropical_green">#06D6A0</color>   <!-- Sea Green -->
+
+    <!-- Menu Category Colors -->
+    <color name="menu_appetizer">#FF9E00</color>   <!-- Appetizers - Orange -->
+    <color name="menu_main">#0A7A3B</color>        <!-- Main Course - Green -->
+    <color name="menu_dessert">#EF476F</color>     <!-- Desserts - Pink -->
+    <color name="menu_drink">#118AB2</color>       <!-- Drinks - Blue -->
+    <color name="menu_special">#9B5DE5</color>     <!-- Specials - Purple -->
+
+    <!-- Rating & Review Colors -->
+    <color name="rating_star">#FFD700</color>      <!-- Gold Star -->
+    <color name="rating_filled">#FFC107</color>    <!-- Filled rating -->
+    <color name="rating_empty">#E0E0E0</color>     <!-- Empty rating -->
+
+    <!-- Discount & Promo Colors -->
+    <color name="discount_red">#E63946</color>     <!-- Discount badge -->
+    <color name="promo_green">#0A7A3B</color>      <!-- Promo badge -->
+    <color name="new_item">#06D6A0</color>         <!-- New item badge -->
+
+    <!-- Table & Reservation Status -->
+    <color name="table_available">#0A7A3B</color>  <!-- Available - Green -->
+    <color name="table_reserved">#FF9E00</color>   <!-- Reserved - Orange -->
+    <color name="table_occupied">#EF476F</color>   <!-- Occupied - Red -->
+    <color name="table_cleaning">#118AB2</color>   <!-- Cleaning - Blue -->
+
+    <!-- Gradient Colors (for backgrounds) -->
+    <color name="gradient_start">#FF6B35</color>   <!-- Sunset start -->
+    <color name="gradient_middle">#FFD166</color>  <!-- Sun middle -->
+    <color name="gradient_end">#06D6A0</color>     <!-- Ocean end -->
+
+    <!-- Shadow & Depth Colors -->
+    <color name="shadow_light">#1A000000</color>   <!-- Light shadow -->
+    <color name="shadow_medium">#33000000</color>  <!-- Medium shadow -->
+    <color name="shadow_dark">#4D000000</color>    <!-- Dark shadow -->
 
 </resources>
